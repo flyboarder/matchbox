@@ -29,18 +29,6 @@
     [matchbox.registry :refer [register-listener register-auth-listener disable-auth-listener!]]
     #?(:cljs cljsjs.firebase)))
 
-;; macros
-(defmacro promise-> [& args]
-    (let [[err args] (utils/extract :catch args)
-          make-call (fn [i & rest]
-                      (if (zero? i)
-                        `(.once ~@rest "value")
-                        `(.then ~@rest)))
-          calls (map-indexed make-call args)]
-      (if err
-        `(-> ~@calls (.catch ~err))
-        `(-> ~@calls))))
-
 ;; constants
 
 ;; Distinct from nil/null in CLJS, useful for opting out of callbacks
