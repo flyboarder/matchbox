@@ -6,6 +6,7 @@
    [com.firebase/firebase-client-jvm "2.5.2" :exclusions [org.apache.httpcomponents/httpclient]]
    [cljsjs/firebase "2.4.1-0"]
    [org.apache.httpcomponents/httpclient "4.5.2"]
+   [funcool/promesa "1.1.1"]
    ;; optional namespace dependencies
    [org.clojure/core.async "0.2.374" :scope "provided"]
    [reagent "0.6.0-alpha" :scope "provided"]

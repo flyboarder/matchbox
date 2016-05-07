@@ -27,6 +27,7 @@
     [clojure.walk :as walk]
     [matchbox.utils :as utils]
     [matchbox.registry :refer [register-listener register-auth-listener disable-auth-listener!]]
+    ;[matchbox.promise :as prom]
     #?(:cljs cljsjs.firebase)))
 
 ;; constants
