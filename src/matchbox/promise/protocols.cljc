@@ -1,5 +1,5 @@
 (ns matchbox.promise.protocols
-  (:refer-clojure :exclude [promise -key -val map -deref get-in deref reset! swap! conj! dissoc! assoc! take take-last])
+  (:refer-clojure :exclude [promise -key -val map  get-in -deref deref reset! swap! conj! dissoc! assoc! take take-last])
   (:require [promesa.core :as prom]))
 
 ;; Matchbox Public API Protocol
@@ -15,14 +15,14 @@
         [_]
         "Immediate ancestor of Reference or DataSnapshot, if any.")
 
-      (deref
+      (-deref
         [_]
         [_ state]
         "Deref a Reference, Promise or DataSnapshot.")
 
-      (deref-list
+      (-deref-list
         [_]
-        [_ callback]
+        [_ state]
         "Deref a Reference, Promise or DataSnapshot and return a list of values.")
 
       ;(with-priority
@@ -126,20 +126,14 @@
 
       (-val
         [_]
+        [_ callback]
         "Gets the JavaScript object representation of the Reference or DataSnapshot.")
 
       (-child
         [_ path]
         "Gets a Firebase Reference or DataSnapshot for the location at the specified relative path.")
 
-      (-deref-then
-        [_ callback]
-        "Deref a promise and pass to callback.")
-
-      (-deref
-        [_]
-        [_ state]
-        "Deref a Reference, Promise or DataSnapshot.")))
+      ))
 
 ;; Firebase Reference Protocol
 #?(:cljs
@@ -368,14 +362,11 @@
 
       (-key [ref] (.key ref))
 
-      (-val [ref] (prom/then (-once ref "value") -val))
+      (-val
+        ([ref] (prom/then (-once ref "value") -val))
+        ([ref callback] (-once ref "value" callback)))
 
       (-child [ref path] (.child ref path))
-
-      (-deref [ref] (-val ref))
-
-      ;(-deref-then [p callback] (prom/chain p -val callback))
-
 
       ;; Firebase Promise
       prom/Promise
@@ -383,27 +374,25 @@
 
       (-key [p] (prom/then p -key))
 
-      (-val [p] (prom/then p -val))
+      (-val
+        ([p] (prom/then p -val))
+        ([p callback] (prom/chain p -val callback)))
 
       (-child [p path] (prom/then p #(-child % path)))
 
-      (-deref [p state] (-deref-then p #(reset! state %)))
-
-      (-deref-then [p callback] (prom/chain p -val callback))
-
       ;; Firebase DataSnapshot
       object
-      (-ref [p] (.ref p))
+      (-ref [dat] (.ref dat))
 
-      (-key [p] (.key p))
+      (-key [dat] (.key dat))
 
-      (-val [p] (.val p))
+      (-val
+        ([dat] (.val dat))
+        ([dat callback] (comp (callback (.val dat))
+                              (.val dat))))
 
-      (-child [p path] (.child p path))
+      (-child [dat path] (.child dat path))
 
-      (-deref [dat] (-val dat))
-
-      ;(-deref-then [p callback] (prom/chain p -val callback))
       ))
 
 #?(:cljs
