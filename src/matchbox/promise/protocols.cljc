@@ -7,26 +7,6 @@
     (defprotocol Matchbox
       "Matchbox Public API"
 
-      (connect!
-        [_]
-        "Connect to Firebase and Create a Reference.")
-
-      (disconnect!
-        [_]
-        "Disconnect from Firebase.")
-
-      (reconnect!
-        [_]
-        "Attempt Reconnect to Firebase.")
-
-      (connected?
-        [_]
-        "Tracks state of Firebase connection.")
-
-      (on-disconnect
-        [_]
-        "Reference onDisconnect.")
-
       (get-in
         [_ korks]
         "Obtain child Reference or DataSnapshot from base by following korks.")

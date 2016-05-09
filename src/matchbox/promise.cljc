@@ -4,9 +4,9 @@
     [clojure.string :as str]
     [clojure.walk :as walk]
     [promesa.core :as prom]
+    [matchbox.core :as mbox]
     [matchbox.promise.protocols :as proto]
-    [matchbox.utils :as utils])
-  #?(:cljs (:require-macros [promesa.core :refer [alet]])))
+    [matchbox.utils :as utils]))
 
 ;; this namespace should only be used with javascript (for now...)
 
@@ -28,47 +28,28 @@
     (extend-protocol proto/Matchbox
 
       js.Firebase
-      (disconnect!
-        [_]())
+      (get-in
+        [ref korks]
+        (let [path (utils/korks->path korks)]
+          (if-not (seq path) ref (proto/-child ref path))))
 
-      (reconnect!
-        [_]())
-
-      (connected?
-        [_]())
-
-      (on-disconnect
-        [_]())
+      (parent
+        [ref] (proto/-parent ref))
 
       prom/Promise
-      (connect!
-        [_]())
+      (get-in
+        [p korks]
+        (then p #(get-in % korks)))
 
-      (disconnect!
-        [_]())
-
-      (reconnect!
-        [_]())
-
-      (connected?
-        [_]())
-
-      (on-disconnect
-        [_]())
-
-      string
-      (connect!
-        [_]())
+      (parent
+        [p] (proto/-parent p))
 
       object
-      (disconnect!
-        [_]())
+      (get-in
+        [dat korks]
+        (let [path (utils/korks->path korks)]
+          (if-not (seq path) dat (proto/-child dat path))))
 
-      (reconnect!
-        [_]())
-
-      (connected?
-        [_]())
-
-      (on-disconnect
-        [_]())))
+      (parent
+        [dat] (proto/-parent dat))
+))
