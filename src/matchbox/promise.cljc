@@ -1,5 +1,5 @@
 (ns matchbox.promise
-  (:refer-clojure :exclude [promise map deref])
+  (:refer-clojure :exclude [promise map deref reset! swap!])
   (:require
     [clojure.string :as str]
     [clojure.walk :as walk]
@@ -22,28 +22,39 @@
 
 (def branch prom/branch)
 
-;(def get-in mbox/get-in)
-
-#?(:cljs
-    (defn -get-in
-      [in korks]
-      (let [path (utils/korks->path korks)]
-        (if-not (seq path) in (proto/-child in path)))))
-
 #?(:cljs
     (defn --deref
+      ([in]
+       (chain in proto/-val mbox/hydrate))
+      ([in state]
+       (--deref in state mbox/undefined))
+      ([in state callback]
+       (proto/-val in #(comp (cljs.core/reset! state (mbox/hydrate (proto/-val %)))
+                              (callback %))))))
+#?(:cljs
+    (defn --deref-list
       ([ref]
-       (then (proto/-val ref) mbox/hydrate)
-       )
+       (proto/-once ref "value" mbox/get-children))
       ([ref state]
-       (--deref ref state mbox/undefined))
+       (--deref ref state mbox/get-children))
       ([ref state callback]
-       (proto/-val ref #(comp (reset! state (mbox/hydrate (proto/-val %)))
-                              callback)))))
+       (--deref ref state #(callback (mbox/get-children %))))))
 
 #?(:cljs
     (defn deref [& args]
        (apply proto/-deref args)))
+
+#?(:cljs
+    (defn merge! [& args]
+       (apply proto/-merge! args)))
+
+#?(:cljs
+    (defn reset! [& args]
+       (apply proto/-reset! args)))
+
+#?(:cljs
+    (defn swap! [& args]
+       (apply proto/-swap! args)))
 
 #?(:cljs
     (extend-protocol proto/Matchbox
@@ -52,7 +63,7 @@
       js.Firebase
       (get-in
         [ref korks]
-        (-get-in ref korks))
+        (mbox/get-in ref korks))
 
       (parent
         [ref]
@@ -62,7 +73,33 @@
         ([ref]
          (--deref ref))
         ([ref state]
-         (--deref ref state)))
+         (--deref ref state))
+        ([ref state callback]
+         (--deref ref state callback)))
+
+      (-deref-list
+        ([ref]
+         (--deref-list ref))
+        ([ref state]
+         (--deref-list ref state))
+        ([ref state callback]
+         (--deref-list ref state callback)))
+
+      (-reset!
+        ([ref val]
+         (reset! ref val mbox/undefined))
+        ([ref val callback]
+         (mbox/reset! ref val callback)))
+
+      (-swap!
+        [ref fn args]
+        (apply (partial mbox/swap! ref fn) args))
+
+      (-merge!
+        ([ref val]
+         (merge! ref val mbox/undefined))
+        ([ref val callback]
+         (mbox/merge! ref val callback)))
 
       ;; Firebase Promise
       prom/Promise
@@ -72,19 +109,45 @@
 
       (parent
         [p]
-        (proto/-parent p))
+        (then p proto/-parent))
 
       (-deref
-        ([ref]
-         (--deref ref))
-        ([ref state]
-         (--deref ref state)))
+        ([p]
+         (--deref p))
+        ([p state]
+         (--deref p state))
+        ([p state callback]
+         (--deref p state callback)))
+
+      (-deref-list
+        ([p]
+         (--deref-list p))
+        ([p state]
+         (--deref-list p state))
+        ([p state callback]
+         (--deref-list p state callback)))
+
+      (-reset!
+        ([p val]
+         (reset! p val mbox/undefined))
+        ([p val callback]
+         (then p #(reset! % val callback))))
+
+      (-swap!
+        ([p fn args]
+         (then p #(swap! % fn args))))
+
+      (-merge!
+        ([p val]
+         (merge! p val mbox/undefined))
+        ([p val callback]
+         (then p #(merge! % val callback))))
 
       ;; Firebase DataSnapshot
       object
       (get-in
         [ref korks]
-        (-get-in ref korks))
+        (mbox/get-in ref korks))
 
       (parent
         [dat]
@@ -94,5 +157,32 @@
         ([dat]
          (-> dat proto/-val mbox/hydrate))
         ([dat state]
-         (--deref dat state)))
+         (--deref dat state))
+        ([dat state callback]
+         (--deref dat state callback)))
+
+      (-deref-list
+        ([dat]
+         (mbox/get-children dat))
+        ([dat state]
+         (--deref-list dat state))
+        ([dat state callback]
+         (--deref-list dat state callback)))
+
+      (-reset!
+        ([dat val]
+         (reset! dat val mbox/undefined))
+        ([dat val callback]
+         (reset! (proto/-ref dat) val callback)))
+
+      (-swap!
+        ([dat fn args]
+         (swap! (proto/-ref dat) fn args)))
+
+      (-merge!
+        ([dat val]
+         (merge! dat val mbox/undefined))
+        ([dat val callback]
+         (merge! (proto/-ref dat) val callback)))
+
 ))

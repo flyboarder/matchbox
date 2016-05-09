@@ -1,5 +1,5 @@
 (ns matchbox.promise.protocols
-  (:refer-clojure :exclude [promise -key -val map  get-in -deref deref reset! swap! conj! dissoc! assoc! take take-last])
+  (:refer-clojure :exclude [promise -key -val map  get-in -deref deref -reset! reset! swap! conj! dissoc! assoc! take take-last])
   (:require [promesa.core :as prom]))
 
 ;; Matchbox Public API Protocol
@@ -18,11 +18,13 @@
       (-deref
         [_]
         [_ state]
+        [_ state callback]
         "Deref a Reference, Promise or DataSnapshot.")
 
       (-deref-list
         [_]
         [_ state]
+        [_ state callback]
         "Deref a Reference, Promise or DataSnapshot and return a list of values.")
 
       ;(with-priority
@@ -34,17 +36,16 @@
         [_ priority callback]
         "Set priority value on Reference, Promise or DataSnapshot.")
 
-      (reset!
+      (-reset!
         [_ val]
         [_ val callback]
         "Reset value on Reference, Promise or DataSnapshot.")
 
-      (swap!
-        [_ fn]
-        [_ fn callback]
+      (-swap!
+        [_ fn args]
         "Swap the value on a Reference, Promise or DataSnapshot.")
 
-      (merge!
+      (-merge!
         [_ val]
         [_ val callback]
         "Merge a value with a Reference, Promise or DataSnapshot.")
@@ -58,11 +59,6 @@
         [_]
         [_ callback]
         "Dissoc a Reference, Promise or DataSnapshot.")
-
-      (assoc!
-        [_ kvs]
-        [_ kvs callback]
-        "Assoc key value pairs to a Reference, Promise or DataSnapshot.")
 
       (ref?
         [_]
@@ -875,3 +871,18 @@
       (-haschildren [dat] (.hasChildren dat))
 
       (-numchildren [dat] (.numChildren dat))))
+
+#?(:cljs
+    (extend-protocol prom/IPromise
+
+      ;; Firebase Reference
+      js.Firebase
+      (-map
+        [it cb]
+        (.then (prom/promise it) #(cb %)))
+      (-bind
+        [it cb]
+        (.then (prom/promise it) #(cb %)))
+      (-catch
+        [it cb]
+        (.catch (prom/promise it) #(cb %)))))
