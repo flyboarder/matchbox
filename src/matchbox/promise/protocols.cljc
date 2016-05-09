@@ -1,7 +1,70 @@
 (ns matchbox.promise.protocols
-  (:refer-clojure :exclude [promise -key -val map -deref])
+  (:refer-clojure :exclude [promise -key -val map -deref get-in deref])
   (:require [promesa.core :as prom]))
 
+;; Matchbox Public API Protocol
+#?(:cljs
+    (defprotocol Matchbox
+      "Matchbox Public API"
+
+      (connect! [_ url] "Connect to Firebase and Create a Reference.")
+
+      (disconnect! [_] "Disconnect from Firebase.")
+
+      (reconnect! [_] "Attempt Reconnect to Firebase.")
+
+      (connected? [_] "Tracks state of Firebase connection.")
+
+      (get-in [_ korks] "Obtain child Reference or DataSnapshot from base by following korks.")
+
+      (parent [_] "Immediate ancestor of Reference or DataSnapshot, if any.")
+
+      (deref
+        [_]
+        [_ state]
+        "Deref a Reference, Promise or DataSnapshot.")
+
+      (deref-list)
+
+      (with-priority)
+      ;(reset-with-priority!)
+
+      (reset-priority!)
+
+      (reset!)
+
+      (swap!)
+
+      (merge!)
+
+      (conj!)
+
+      (dissoc!)
+
+      (assoc!)
+
+      (ref?)
+
+      (order-priority)
+
+      (order-key)
+
+      (order-value)
+
+      (order-child)
+
+      (start-at)
+
+      (end-at)
+
+      (equal-to)
+
+      (take)
+
+      (take-last)
+
+
+      ))
 ;; Firebase Common Protocol
 #?(:cljs
     (defprotocol Firebase
