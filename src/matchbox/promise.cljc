@@ -23,3 +23,52 @@
 (def branch prom/branch)
 
 ;(def get-in mbox/get-in)
+
+#?(:cljs
+    (extend-protocol proto/Matchbox
+
+      js.Firebase
+      (disconnect!
+        [_]())
+
+      (reconnect!
+        [_]())
+
+      (connected?
+        [_]())
+
+      (on-disconnect
+        [_]())
+
+      prom/Promise
+      (connect!
+        [_]())
+
+      (disconnect!
+        [_]())
+
+      (reconnect!
+        [_]())
+
+      (connected?
+        [_]())
+
+      (on-disconnect
+        [_]())
+
+      string
+      (connect!
+        [_]())
+
+      object
+      (disconnect!
+        [_]())
+
+      (reconnect!
+        [_]())
+
+      (connected?
+        [_]())
+
+      (on-disconnect
+        [_]())))

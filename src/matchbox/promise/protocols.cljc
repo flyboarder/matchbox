@@ -1,5 +1,5 @@
 (ns matchbox.promise.protocols
-  (:refer-clojure :exclude [promise -key -val map -deref get-in deref])
+  (:refer-clojure :exclude [promise -key -val map -deref get-in deref reset! swap! conj! dissoc! assoc! take take-last])
   (:require [promesa.core :as prom]))
 
 ;; Matchbox Public API Protocol
@@ -7,78 +7,154 @@
     (defprotocol Matchbox
       "Matchbox Public API"
 
-      (connect! [_ url] "Connect to Firebase and Create a Reference.")
+      (connect!
+        [_]
+        "Connect to Firebase and Create a Reference.")
 
-      (disconnect! [_] "Disconnect from Firebase.")
+      (disconnect!
+        [_]
+        "Disconnect from Firebase.")
 
-      (reconnect! [_] "Attempt Reconnect to Firebase.")
+      (reconnect!
+        [_]
+        "Attempt Reconnect to Firebase.")
 
-      (connected? [_] "Tracks state of Firebase connection.")
+      (connected?
+        [_]
+        "Tracks state of Firebase connection.")
 
-      (get-in [_ korks] "Obtain child Reference or DataSnapshot from base by following korks.")
+      (on-disconnect
+        [_]
+        "Reference onDisconnect.")
 
-      (parent [_] "Immediate ancestor of Reference or DataSnapshot, if any.")
+      (get-in
+        [_ korks]
+        "Obtain child Reference or DataSnapshot from base by following korks.")
+
+      (parent
+        [_]
+        "Immediate ancestor of Reference or DataSnapshot, if any.")
 
       (deref
         [_]
         [_ state]
         "Deref a Reference, Promise or DataSnapshot.")
 
-      (deref-list)
+      (deref-list
+        [_]
+        [_ callback]
+        "Deref a Reference, Promise or DataSnapshot and return a list of values.")
 
-      (with-priority)
-      ;(reset-with-priority!)
+      ;(with-priority
+      ;  [_]
+      ;  "For use with reset!/swap! and order-* with priority value.")
 
-      (reset-priority!)
+      (reset-priority!
+        [_ priority]
+        [_ priority callback]
+        "Set priority value on Reference, Promise or DataSnapshot.")
 
-      (reset!)
+      (reset!
+        [_ val]
+        [_ val callback]
+        "Reset value on Reference, Promise or DataSnapshot.")
 
-      (swap!)
+      (swap!
+        [_ fn]
+        [_ fn callback]
+        "Swap the value on a Reference, Promise or DataSnapshot.")
 
-      (merge!)
+      (merge!
+        [_ val]
+        [_ val callback]
+        "Merge a value with a Reference, Promise or DataSnapshot.")
 
-      (conj!)
+      (conj!
+        [_ val]
+        [_ val callback]
+        "Conjoin a value to a Reference, Promise or DataSnapshot.")
 
-      (dissoc!)
+      (dissoc!
+        [_]
+        [_ callback]
+        "Dissoc a Reference, Promise or DataSnapshot.")
 
-      (assoc!)
+      (assoc!
+        [_ kvs]
+        [_ kvs callback]
+        "Assoc key value pairs to a Reference, Promise or DataSnapshot.")
 
-      (ref?)
+      (ref?
+        [_]
+        "Returns True if input is a Reference.")
 
-      (order-priority)
+      (order-priority
+        [_]
+        "Resolve Reference, Promise or DataSnapshot and Order by priority.")
 
-      (order-key)
+      (order-key
+        [_]
+        "Resolve Reference, Promise or DataSnapshot and Order by key.")
 
-      (order-value)
+      (order-value
+        [_]
+        "Resolve Reference, Promise or DataSnapshot and Order by value.")
 
-      (order-child)
+      (order-child
+        [_]
+        "Resolve Reference, Promise or DataSnapshot and Order by child.")
 
-      (start-at)
+      (start-at
+        [_ value]
+        [_ value key]
+        "Limit query to begin at 'value' (inclusive).")
 
-      (end-at)
+      (end-at
+        [_ value]
+        [_ value key]
+        "Limit query to end at 'value' (inclusive).")
 
-      (equal-to)
+      (equal-to
+        [_ value]
+        [_ value key]
+        "Limit query to 'value' (inclusive).")
 
-      (take)
+      (take
+        [_ limit]
+        "Limit to the first 'limit' items.")
 
-      (take-last)
+      (take-last
+        [_ limit]
+        "Limit to the last 'limit' items.")
 
+      ;; Listener API
 
+      ;; Auth API
       ))
 ;; Firebase Common Protocol
 #?(:cljs
     (defprotocol Firebase
       "Common firebase abstractions."
 
-      (-ref [_] "Gets a Firebase reference to the location.")
+      (-ref
+        [_]
+        "Gets a Firebase reference to the location.")
 
-      (-key [_]  "Returns the last token in a Firebase location.")
+      (-key
+        [_]
+        "Returns the last token in a Firebase location.")
 
-      (-val [_] "Gets the JavaScript object representation of the Reference or DataSnapshot.")
+      (-val
+        [_]
+        "Gets the JavaScript object representation of the Reference or DataSnapshot.")
 
-      (-child [_ path]  "Gets a Firebase Reference or DataSnapshot for the location at the specified relative path.")
+      (-child
+        [_ path]
+        "Gets a Firebase Reference or DataSnapshot for the location at the specified relative path.")
 
-      (-deref-then [_ callback]  "Deref a promise and pass to callback.")
+      (-deref-then
+        [_ callback]
+        "Deref a promise and pass to callback.")
 
       (-deref
         [_]
@@ -90,8 +166,11 @@
     (defprotocol FirebaseRef
       "A firebase reference abstraction."
 
-      (-authcustomtoken [_ token] [_ token callback] [_ token callback opts]
-                        "Authenticates a Firebase client using an authentication token or Firebase Secret.")
+      (-authcustomtoken
+        [_ token]
+        [_ token callback]
+        [_ token callback opts]
+        "Authenticates a Firebase client using an authentication token or Firebase Secret.")
 
       (-authanonymous
         [_ callback]
@@ -122,19 +201,33 @@
         [_ provider cred callback opts]
         "Authenticates a Firebase client using OAuth access tokens or credentials.")
 
-      (-getauth [_] "Synchronously retrieves the current authentication state of the client.")
+      (-getauth
+        [_]
+        "Synchronously retrieves the current authentication state of the client.")
 
-      (-onauth  [_ callback] "Listens for changes to the client's authentication state.")
+      (-onauth
+        [_ callback]
+        "Listens for changes to the client's authentication state.")
 
-      (-offauth [_ callback] "Detaches a callback previously attached with onauth.")
+      (-offauth
+        [_ callback]
+        "Detaches a callback previously attached with onauth.")
 
-      (-unauth  [_] "Unauthenticates a Firebase client.")
+      (-unauth
+        [_]
+        "Unauthenticates a Firebase client.")
 
-      (-parent  [_] "Gets a Firebase reference to the parent location.")
+      (-parent
+        [_]
+        "Gets a Firebase reference to the parent location.")
 
-      (-root    [_] "Gets a Firebase reference to the root of the Firebase.")
+      (-root
+        [_]
+        "Gets a Firebase reference to the root of the Firebase.")
 
-      (-tostr   [_] "Gets the absolute URL corresponding to this Firebase reference's location.")
+      (-tostr
+        [_]
+        "Gets the absolute URL corresponding to this Firebase reference's location.")
 
       (-set
         [_ value]
@@ -197,9 +290,13 @@
         [_ cred callback]
         "Sends a password-reset email to the owner of the account, containing a token that may be used to authenticate and change the user's password.")
 
-      (-goonline  [_] "Manually reestablishes a connection to the Firebase server and enables automatic reconnection.")
+      (-goonline
+        [_]
+        "Manually reestablishes a connection to the Firebase server and enables automatic reconnection.")
 
-      (-gooffline [_] "Manually disconnects the Firebase client from the server and disables automatic reconnection.")))
+      (-gooffline
+        [_]
+        "Manually disconnects the Firebase client from the server and disables automatic reconnection.")))
 
 ;; Firebase Query Protocol
 #?(:cljs
@@ -222,13 +319,21 @@
         [_ event callback failure]
         "Listens for exactly one event of the specified event type, and then stops listening.")
 
-      (-orderbychild    [_ key] "Generates a new Query object ordered by the specified child key.")
+      (-orderbychild
+        [_ key]
+        "Generates a new Query object ordered by the specified child key.")
 
-      (-orderbykey      [_] "Generates a new Query object ordered by key.")
+      (-orderbykey
+        [_]
+        "Generates a new Query object ordered by key.")
 
-      (-orderbyvalue    [_] "Generates a new Query object ordered by child values.")
+      (-orderbyvalue
+        [_]
+        "Generates a new Query object ordered by child values.")
 
-      (-orderbypriority [_] "Generates a new Query object ordered by priority.")
+      (-orderbypriority
+        [_]
+        "Generates a new Query object ordered by priority.")
 
       (-startat
         [_ value]
@@ -254,15 +359,25 @@
     (defprotocol FirebaseSnapshot
       "A firebase data snapshot abstraction."
 
-      (-exists      [_] "Returns true if this DataSnapshot contains any data.")
+      (-exists
+        [_]
+        "Returns true if this DataSnapshot contains any data.")
 
-      (-foreach     [_ callback] "Enumerates through the DataSnapshot’s children (in the default order).")
+      (-foreach
+        [_ callback]
+        "Enumerates through the DataSnapshot’s children (in the default order).")
 
-      (-haschild    [_ path] "Returns true if the specified child exists.")
+      (-haschild
+        [_ path]
+        "Returns true if the specified child exists.")
 
-      (-haschildren [_] "Returns true if the DataSnapshot has any children.")
+      (-haschildren
+        [_]
+        "Returns true if the DataSnapshot has any children.")
 
-      (-numchildren [_] "Gets the number of children for this DataSnapshot.")))
+      (-numchildren
+        [_]
+        "Gets the number of children for this DataSnapshot.")))
 
 #?(:cljs
     (extend-protocol Firebase
