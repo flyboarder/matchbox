@@ -1,5 +1,5 @@
 (ns matchbox.promise
-  (:refer-clojure :exclude [promise map deref reset! swap!])
+  (:refer-clojure :exclude [promise map deref reset! swap! conj! dissoc!])
   (:require
     [clojure.string :as str]
     [clojure.walk :as walk]
@@ -49,6 +49,10 @@
        (apply proto/-merge! args)))
 
 #?(:cljs
+    (defn conj! [& args]
+       (apply proto/-conj! args)))
+
+#?(:cljs
     (defn reset! [& args]
        (apply proto/-reset! args)))
 
@@ -57,11 +61,15 @@
        (apply proto/-swap! args)))
 
 #?(:cljs
+    (defn dissoc! [& args]
+       (apply proto/-dissoc! args)))
+
+#?(:cljs
     (extend-protocol proto/Matchbox
 
       ;; Firebase Reference
       js.Firebase
-      (get-in
+      (-get-in
         [ref korks]
         (mbox/get-in ref korks))
 
@@ -101,9 +109,41 @@
         ([ref val callback]
          (mbox/merge! ref val callback)))
 
+      (-conj!
+        ([ref val]
+         (conj! ref val mbox/undefined))
+        ([ref val callback]
+         (mbox/conj! ref val callback)))
+
+      (-dissoc!
+        ([ref]
+         (dissoc! ref mbox/undefined))
+        ([ref callback]
+         (mbox/dissoc! ref callback)))
+
+      (order-priority [ref] (mbox/order-by-priority ref))
+
+      (order-key [ref] (mbox/order-by-key ref))
+
+      (order-value [ref] (mbox/order-by-value ref))
+
+      (order-child [ref child] (mbox/order-by-child ref child))
+
+      (start-at
+        ([ref val]
+         (mbox/start-at ref val))
+        ([ref val key]
+         (mbox/start-at ref val key)))
+
+      (end-at
+        ([ref val]
+         (mbox/end-at ref val))
+        ([ref val key]
+         (mbox/end-at ref val key)))
+
       ;; Firebase Promise
       prom/Promise
-      (get-in
+      (-get-in
         [p korks]
         (then p #(get-in % korks)))
 
@@ -143,9 +183,35 @@
         ([p val callback]
          (then p #(merge! % val callback))))
 
+      (-conj!
+        ([p val]
+         (conj! p val mbox/undefined))
+        ([p val callback]
+         (then p #(conj! % val callback))))
+
+      (-dissoc!
+        ([p]
+         (dissoc! p mbox/undefined))
+        ([p callback]
+         (then p #(dissoc! % callback))))
+
+      (order-priority [p] (then p proto/order-priority))
+
+      (order-key [p] (then p proto/order-key))
+
+      (order-value [p] (then p proto/order-value))
+
+      (order-child [p child] (then p #(proto/order-child % child)))
+
+      (start-at
+        ([p val]
+         (then p #(proto/start-at % val)))
+        ([p val key]
+         (then p #(proto/start-at % val key))))
+
       ;; Firebase DataSnapshot
       object
-      (get-in
+      (-get-in
         [ref korks]
         (mbox/get-in ref korks))
 
@@ -184,5 +250,31 @@
          (merge! dat val mbox/undefined))
         ([dat val callback]
          (merge! (proto/-ref dat) val callback)))
+
+      (-conj!
+        ([dat val]
+         (conj! dat val mbox/undefined))
+        ([dat val callback]
+         (conj! (proto/-ref dat) val callback)))
+
+      (-dissoc!
+        ([dat]
+         (dissoc! dat mbox/undefined))
+        ([dat callback]
+         (mbox/dissoc! (proto/-ref dat) callback)))
+
+      (order-priority [dat] (proto/order-priority (proto/-ref dat)))
+
+      (order-key [dat] (proto/order-key (proto/-ref dat)))
+
+      (order-value [dat] (proto/order-value (proto/-ref dat)))
+
+      (order-child [dat child] (proto/order-child (proto/-ref dat) child))
+
+      (start-at
+        ([dat val]
+         (mbox/start-at (proto/-ref dat) val))
+        ([dat val key]
+         (mbox/start-at (proto/-ref dat) val key)))
 
 ))

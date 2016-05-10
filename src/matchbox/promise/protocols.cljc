@@ -1,5 +1,5 @@
 (ns matchbox.promise.protocols
-  (:refer-clojure :exclude [promise -key -val map  get-in -deref deref -reset! reset! swap! conj! dissoc! assoc! take take-last])
+  (:refer-clojure :exclude [promise -key -val map  get-in -deref -reset! -swap! -conj! -dissoc! take take-last])
   (:require [promesa.core :as prom]))
 
 ;; Matchbox Public API Protocol
@@ -7,7 +7,7 @@
     (defprotocol Matchbox
       "Matchbox Public API"
 
-      (get-in
+      (-get-in
         [_ korks]
         "Obtain child Reference or DataSnapshot from base by following korks.")
 
@@ -26,10 +26,6 @@
         [_ state]
         [_ state callback]
         "Deref a Reference, Promise or DataSnapshot and return a list of values.")
-
-      ;(with-priority
-      ;  [_]
-      ;  "For use with reset!/swap! and order-* with priority value.")
 
       (reset-priority!
         [_ priority]
@@ -50,19 +46,15 @@
         [_ val callback]
         "Merge a value with a Reference, Promise or DataSnapshot.")
 
-      (conj!
+      (-conj!
         [_ val]
         [_ val callback]
         "Conjoin a value to a Reference, Promise or DataSnapshot.")
 
-      (dissoc!
+      (-dissoc!
         [_]
         [_ callback]
         "Dissoc a Reference, Promise or DataSnapshot.")
-
-      (ref?
-        [_]
-        "Returns True if input is a Reference.")
 
       (order-priority
         [_]
@@ -77,22 +69,22 @@
         "Resolve Reference, Promise or DataSnapshot and Order by value.")
 
       (order-child
-        [_]
+        [_ child]
         "Resolve Reference, Promise or DataSnapshot and Order by child.")
 
       (start-at
-        [_ value]
-        [_ value key]
+        [_ val]
+        [_ val key]
         "Limit query to begin at 'value' (inclusive).")
 
       (end-at
-        [_ value]
-        [_ value key]
+        [_ val]
+        [_ val key]
         "Limit query to end at 'value' (inclusive).")
 
       (equal-to
-        [_ value]
-        [_ value key]
+        [_ val]
+        [_ val key]
         "Limit query to 'value' (inclusive).")
 
       (take
@@ -107,6 +99,7 @@
 
       ;; Auth API
       ))
+
 ;; Firebase Common Protocol
 #?(:cljs
     (defprotocol Firebase
