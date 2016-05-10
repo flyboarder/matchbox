@@ -1,5 +1,5 @@
 (ns matchbox.promise
-  (:refer-clojure :exclude [promise map deref reset! swap! conj! dissoc!])
+  (:refer-clojure :exclude [promise map deref reset! swap! conj! dissoc! take take-last])
   (:require
     [clojure.string :as str]
     [clojure.walk :as walk]
@@ -63,6 +63,13 @@
 #?(:cljs
     (defn dissoc! [& args]
        (apply proto/-dissoc! args)))
+#?(:cljs
+    (defn take [ref limit]
+      (proto/-limitfirst ref limit)))
+
+#?(:cljs
+    (defn take-last [ref limit]
+      (proto/-limitlast ref limit)))
 
 #?(:cljs
     (extend-protocol proto/Matchbox
@@ -141,6 +148,12 @@
         ([ref val key]
          (mbox/end-at ref val key)))
 
+      (equal-to
+        ([ref val]
+         (mbox/equal-to ref val))
+        ([ref val key]
+         (mbox/equal-to ref val key)))
+
       ;; Firebase Promise
       prom/Promise
       (-get-in
@@ -209,6 +222,18 @@
         ([p val key]
          (then p #(proto/start-at % val key))))
 
+      (end-at
+        ([p val]
+         (then p #(proto/end-at % val)))
+        ([p val key]
+         (then p #(proto/end-at % val key))))
+
+      (equal-to
+        ([p val]
+         (then p #(proto/equal-to % val)))
+        ([p val key]
+         (then p #(proto/equal-to % val key))))
+
       ;; Firebase DataSnapshot
       object
       (-get-in
@@ -276,5 +301,17 @@
          (mbox/start-at (proto/-ref dat) val))
         ([dat val key]
          (mbox/start-at (proto/-ref dat) val key)))
+
+      (end-at
+        ([dat val]
+         (mbox/end-at (proto/-ref dat) val))
+        ([dat val key]
+         (mbox/end-at (proto/-ref dat) val key)))
+
+      (equal-to
+        ([dat val]
+         (mbox/equal-to (proto/-ref dat) val))
+        ([dat val key]
+         (mbox/equal-to (proto/-ref dat) val key)))
 
 ))

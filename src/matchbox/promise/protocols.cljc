@@ -87,14 +87,6 @@
         [_ val key]
         "Limit query to 'value' (inclusive).")
 
-      (take
-        [_ limit]
-        "Limit to the first 'limit' items.")
-
-      (take-last
-        [_ limit]
-        "Limit to the last 'limit' items.")
-
       ;; Listener API
 
       ;; Auth API
