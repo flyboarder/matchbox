@@ -29,343 +29,235 @@
       prom/IPromise
       (-map
         [it cb]
-        (.then (prom/promise it) #(cb %)))
+        (.then (promise it) #(cb %)))
       (-bind
         [it cb]
-        (.then (prom/promise it) #(cb %)))
+        (.then (promise it) #(cb %)))
       (-catch
         [it cb]
-        (.catch (prom/promise it) #(cb %)))))
+        (.catch (promise it) #(cb %)))))
 
 #?(:cljs
     ;; Firebase Promise
     (extend-type prom/Promise
 
       proto/Firebase
-      (-ref [p] (prom/then p -ref))
+      (-ref [p] (then p proto/-ref))
 
-      (-key [p] (prom/then p -key))
+      (-key [p] (then p proto/-key))
 
       (-val
-        ([p] (prom/then p -val))
-        ([p callback] (prom/chain p -val callback)))
+        ([p] (then p proto/-val))
+        ([p callback] (chain p proto/-val callback)))
 
-      (-child [p path] (prom/then p #(-child % path)))
+      (-child [p path] (then p #(proto/-child % path)))
 
       proto/FirebaseRef
       (-authcustomtoken
         ([p token]
-         (-authcustomtoken p token matchbox.core/undefined))
+         (then p #(proto/-authcustomtoken % token)))
         ([p token callback]
-         (-authcustomtoken p token callback nil))
+         (then p #(proto/-authcustomtoken % token callback)))
         ([p token callback opts]
-         (prom/then p #(-authcustomtoken % token callback (clj->js opts)))))
+         (then p #(proto/-authcustomtoken % token callback (clj->js opts)))))
 
       (-authanonymous
         ([p callback]
-         (-authanonymous p callback nil))
+         (then p #(proto/-authanonymous % callback)))
         ([p callback opts]
-         (prom/then p #(-authanonymous % callback (clj->js opts)))))
+         (then p #(proto/-authanonymous % callback (clj->js opts)))))
 
       (-authuserpass
         ([p cred]
-         (-authuserpass p cred matchbox.core/undefined))
+         (then p #(proto/-authuserpass % cred)))
         ([p cred callback]
-         (-authuserpass p cred callback nil))
+         (then p #(proto/-authuserpass % cred callback)))
         ([p cred callback opts]
-         (prom/then p #(-authuserpass % cred callback opts))))
+         (then p #(proto/-authuserpass % cred callback opts))))
 
       (-authoauthpopup
         ([p provider]
-         (-authoauthpopup p provider matchbox.core/undefined))
+         (then p #(proto/-authoauthpopup % provider)))
         ([p provider callback]
-         (-authoauthpopup p provider callback nil))
+         (then p #(proto/-authoauthpopup % provider callback)))
         ([p provider callback opts]
-         (prom/then p #(-authoauthpopup % provider callback opts))))
+         (then p #(proto/-authoauthpopup % provider callback opts))))
 
       (-authoauthredirect
         ([p provider]
-         (-authoauthredirect p provider matchbox.core/undefined))
+         (then p #(proto/-authoauthredirect % provider)))
         ([p provider callback]
-         (-authoauthredirect p provider callback nil))
+         (then p #(proto/-authoauthredirect % provider callback)))
         ([p provider callback opts]
-         (prom/then p #(-authoauthredirect % provider callback opts))))
+         (then p #(proto/-authoauthredirect % provider callback opts))))
 
       (-authoauthtoken
         ([p provider cred]
-         (-authoauthtoken p provider cred matchbox.core/undefined))
+         (then p #(proto/-authoauthtoken % provider cred)))
         ([p provider cred callback]
-         (-authoauthtoken p provider cred callback nil))
+         (then p #(proto/-authoauthtoken % provider cred callback)))
         ([p provider cred callback opts]
-         (prom/then p #(-authoauthtoken % provider cred callback opts))))
+         (then p #(proto/-authoauthtoken % provider cred callback opts))))
 
-      (-getauth [p] (prom/then p -getauth))
+      (-getauth [p] (then p proto/-getauth))
 
-      (-onauth  [p callback] (prom/then p #(-onauth % callback)))
+      (-onauth  [p callback] (then p #(proto/-onauth % callback)))
 
-      (-offauth [p callback] (prom/then p #(-offauth % callback)))
+      (-offauth [p callback] (then p #(proto/-offauth % callback)))
 
-      (-unauth  [p] (prom/then p -unauth))
+      (-unauth  [p] (then p proto/-unauth))
 
-      (-parent  [p] (prom/then p -parent))
+      (-parent  [p] (then p proto/-parent))
 
-      (-root    [p] (prom/then p -root))
+      (-root    [p] (then p proto/-root))
 
-      (-tostr   [p] (prom/then p -tostr))
+      (-tostr   [p] (then p proto/-tostr))
 
       (-set
         ([p value]
-         (-set p value matchbox.core/undefined))
+         (then p #(proto/-set % value)))
         ([p value callback]
-         (prom/then p #(-set % value callback))))
+         (then p #(proto/-set % value callback))))
 
       (-update
         ([p value]
-         (-update p value matchbox.core/undefined))
+         (then p #(proto/-update % value)))
         ([p value callback]
-         (prom/then p #(-update % value callback))))
+         (then p #(proto/-update % value callback))))
 
       (-remove
         ([p]
-         (-remove p matchbox.core/undefined))
+         (then p #(proto/-remove %)))
         ([p callback]
-         (prom/then p #(-remove % callback))))
+         (then p #(proto/-remove % callback))))
 
       (-push
         ([p value]
-         (-push p value matchbox.core/undefined))
+         (then p #(proto/-push % value)))
         ([p value callback]
-         (prom/then p #(-push % value callback))))
+         (then p #(proto/-push % value callback))))
 
       (-setwithpriority
         ([p value priority]
-         (-setwithpriority p value priority matchbox.core/undefined))
+         (then p #(proto/-setwithpriority % value priority)))
         ([p value priority callback]
-         (prom/then p #(-setwithpriority % value priority callback))))
+         (then p #(proto/-setwithpriority % value priority callback))))
 
       (-setpriority
         ([p priority]
-         (-setpriority p priority matchbox.core/undefined))
+         (then p #(proto/-setpriority % priority)))
         ([p priority callback]
-         (prom/then p #(-setpriority % priority callback))))
+         (then p #(proto/-setpriority % priority callback))))
 
       (-transaction
         ([p updatefn]
-         (-transaction p updatefn matchbox.core/undefined))
+         (then p #(proto/-transaction % updatefn)))
         ([p updatefn callback]
-         (-transaction p updatefn callback false))
+         (then p #(proto/-transaction % updatefn callback)))
         ([p updatefn callback applylocally]
-         (prom/then p #(-transaction % updatefn callback applylocally))))
+         (then p #(proto/-transaction % updatefn callback applylocally))))
 
       (-createuser
         ([p cred]
-         (-createuser p cred matchbox.core/undefined))
+         (then p #(proto/-createuser % cred)))
         ([p cred callback]
-         (prom/then p #(-createuser % cred callback))))
+         (then p #(proto/-createuser % cred callback))))
 
       (-changeemail
         ([p cred]
-         (-changeemail p cred matchbox.core/undefined))
+         (then p #(proto/-changeemail % cred)))
         ([p cred callback]
-         (prom/then p #(-changeemail % cred callback))))
+         (then p #(proto/-changeemail % cred callback))))
 
       (-changepass
         ([p cred]
-         (-changepass p cred matchbox.core/undefined))
+         (then p #(proto/-changepass % cred)))
         ([p cred callback]
-         (prom/then p #(-changepass % cred callback))))
+         (then p #(proto/-changepass % cred callback))))
 
       (-removeuser
         ([p cred]
-         (-removeuser p cred matchbox.core/undefined))
+         (then p #(proto/-removeuser % cred)))
         ([p cred callback]
-         (prom/then p #(-removeuser % cred callback))))
+         (then p #(proto/-removeuser % cred callback))))
 
       (-resetpass
         ([p cred]
-         (-resetpass p cred matchbox.core/undefined))
+         (then p #(proto/-resetpass % cred)))
         ([p cred callback]
-         (prom/then p #(-resetpass % cred callback))))
+         (then p #(proto/-resetpass % cred callback))))
 
-      (-goonline  [p] (prom/then p #(-goonline %)))
+      (-goonline  [p] (then p #(proto/-goonline %)))
 
-      (-gooffline [p] (prom/then p #(-gooffline %)))
+      (-gooffline [p] (then p #(proto/-gooffline %)))
 
-      FirebaseQuery
+      proto/FirebaseQuery
       (-on
         ([p event callback]
-         (-on p event callback matchbox.core/undefined))
+         (then p #(proto/-on % event callback)))
         ([p event callback failure]
-         (prom/then p #(-on % event callback failure))))
+         (then p #(proto/-on % event callback failure))))
 
       (-off
         ([p event]
-         (-off p event matchbox.core/undefined))
+         (then p #(proto/-off % event)))
         ([p event callback]
-         (prom/then p #(-off % event callback))))
+         (then p #(proto/-off % event callback))))
 
       (-once
         ([p event]
-         (-once p event matchbox.core/undefined))
+         (then p #(proto/-once % event)))
         ([p event callback]
-         (-once p event callback matchbox.core/undefined))
+         (then p #(proto/-once % event callback)))
         ([p event callback failure]
-         (prom/then p #(-once % event callback failure))))
+         (then p #(proto/-once % event callback failure))))
 
-      (-orderbychild    [p key] (prom/then p #(-orderbychild % key)))
+      (-orderbychild    [p key] (then p #(proto/-orderbychild % key)))
 
-      (-orderbykey      [p] (prom/then p #(-orderbykey %)))
+      (-orderbykey      [p] (then p #(proto/-orderbykey %)))
 
-      (-orderbyvalue    [p] (prom/then p #(-orderbyvalue %)))
+      (-orderbyvalue    [p] (then p #(proto/-orderbyvalue %)))
 
-      (-orderbypriority [p] (prom/then p #(-orderbypriority %)))
+      (-orderbypriority [p] (then p #(proto/-orderbypriority %)))
 
       (-startat
         ([p value]
-         (-startat p value nil))
+         (then p #(proto/-startat % value)))
         ([p value key]
-         (prom/then p #(-startat % value key))))
+         (then p #(proto/-startat % value key))))
 
       (-endat
         ([p value]
-         (-endat p value nil))
+         (then p #(proto/-endat % value)))
         ([p value key]
-         (prom/then p #(-endat % value key))))
+         (then p #(proto/-endat % value key))))
 
       (-equalto
         ([p value]
-         (-equalto p value nil))
+         (then p #(proto/-equalto % value)))
         ([p value key]
-         (prom/then p #(-equalto % value key))))
+         (then p #(proto/-equalto % value key))))
 
-      (-limitfirst [p limit] (prom/then p #(-limitfirst % limit)))
+      (-limitfirst [p limit] (then p #(proto/-limitfirst % limit)))
 
-      (-limitlast  [p limit] (prom/then p #(-limitlast % limit)))
+      (-limitlast  [p limit] (then p #(proto/-limitlast % limit)))
 
-      FirebaseSnapshot
-      (-exists      [p] (prom/then p -exists))
+      proto/FirebaseSnapshot
+      (-exists      [p] (then p proto/-exists))
 
-      (-foreach     [p callback] (prom/then p #(-foreach % callback)))
+      (-foreach     [p callback] (then p #(proto/-foreach % callback)))
 
-      (-haschild    [p path] (prom/then p #(-haschild % path)))
+      (-haschild    [p path] (then p #(proto/-haschild % path)))
 
-      (-haschildren [p] (prom/then p -haschildren))
+      (-haschildren [p] (then p proto/-haschildren))
 
-      (-numchildren [p] (prom/then p -numchildren))
-
-      ))
-
-
-#?(:cljs
-    (defn --deref
-      ([in]
-       (chain in proto/-val mbox/hydrate))
-      ([in state]
-       (--deref in state mbox/undefined))
-      ([in state callback]
-       (proto/-val in #(comp (cljs.core/reset! state (mbox/hydrate (proto/-val %)))
-                              (callback %))))))
-#?(:cljs
-    (defn --deref-list
-      ([ref]
-       (proto/-once ref "value" mbox/get-children))
-      ([ref state]
-       (--deref ref state mbox/get-children))
-      ([ref state callback]
-       (--deref ref state #(callback (mbox/get-children %))))))
-
-#?(:cljs
-    (extend-protocol proto/Matchbox
-
-      ;; Firebase Reference
-      js.Firebase
-      (get-in
-        [ref korks]
-        (mbox/get-in ref korks))
-
-      (parent
-        [ref]
-        (proto/-parent ref))
-
-      (-deref
-        ([ref]
-         (--deref ref))
-        ([ref state]
-         (--deref ref state))
-        ([ref state callback]
-         (--deref ref state callback)))
-
-      (deref-list
-        ([ref]
-         (--deref-list ref))
-        ([ref state]
-         (--deref-list ref state))
-        ([ref state callback]
-         (--deref-list ref state callback)))
-
-      (-reset!
-        ([ref val]
-         (mbox/reset! ref val mbox/undefined))
-        ([ref val callback]
-         (mbox/reset! ref val callback)))
-
-      (-swap!
-        [ref fn args]
-        (apply (partial mbox/swap! ref fn) args))
-
-      (-merge!
-        ([ref val]
-         (mbox/merge! ref val mbox/undefined))
-        ([ref val callback]
-         (mbox/merge! ref val callback)))
-
-      (-conj!
-        ([ref val]
-         (mbox/conj! ref val mbox/undefined))
-        ([ref val callback]
-         (mbox/conj! ref val callback)))
-
-      (-dissoc!
-        ([ref]
-         (mbox/dissoc! ref mbox/undefined))
-        ([ref callback]
-         (mbox/dissoc! ref callback)))
-
-      (order-priority [ref] (mbox/order-by-priority ref))
-
-      (order-key [ref] (mbox/order-by-key ref))
-
-      (order-value [ref] (mbox/order-by-value ref))
-
-      (order-child [ref child] (mbox/order-by-child ref child))
-
-      (start-at
-        ([ref val]
-         (mbox/start-at ref val))
-        ([ref val key]
-         (mbox/start-at ref val key)))
-
-      (end-at
-        ([ref val]
-         (mbox/end-at ref val))
-        ([ref val key]
-         (mbox/end-at ref val key)))
-
-      (equal-to
-        ([ref val]
-         (mbox/equal-to ref val))
-        ([ref val key]
-         (mbox/equal-to ref val key)))
+      (-numchildren [p] (then p proto/-numchildren))
 
       ;; Firebase Promise
-      prom/Promise
-      (get-in
+      proto/Matchbox
+      (-get-in
         [p korks]
-        (then p #(get-in % korks)))
-
-      (parent
-        [p]
-        (then p proto/-parent))
+        (prom/then p #(get-in % korks)))
 
       (-deref
         ([p]
@@ -375,7 +267,7 @@
         ([p state callback]
          (--deref p state callback)))
 
-      (deref-list
+      (-deref-list
         ([p]
          (--deref-list p))
         ([p state]
@@ -385,136 +277,57 @@
 
       (-reset!
         ([p val]
-         (then p #(mbox/reset! (proto/-ref %) val mbox/undefined)))
+         (prom/then p #(mbox/reset! (proto/-ref %) val undefined)))
         ([p val callback]
-         (then p #(mbox/reset! (proto/-ref %) val callback))))
+         (prom/then p #(mbox/reset! (proto/-ref %) val callback))))
 
       (-swap!
         ([p fn args]
-         (then p #(swap! % fn args))))
+         (prom/then p #(swap! % fn args))))
 
       (-merge!
         ([p val]
-         (then p #(mbox/merge! (proto/-ref %) val mbox/undefined)))
+         (prom/then p #(mbox/merge! (proto/-ref %) val undefined)))
         ([p val callback]
-         (then p #(mbox/merge! (proto/-ref %) val callback))))
+         (prom/then p #(mbox/merge! (proto/-ref %) val callback))))
 
       (-conj!
         ([p val]
-         (then p #(mbox/conj! (proto/-ref %) val mbox/undefined)))
+         (prom/then p #(mbox/conj! (proto/-ref %) val undefined)))
         ([p val callback]
-         (then p #(mbox/conj! (proto/-ref %) val callback))))
+         (prom/then p #(mbox/conj! (proto/-ref %) val callback))))
 
       (-dissoc!
         ([p]
-         (then p #(mbox/dissoc! (proto/-ref %) callback)))
+         (prom/then p #(mbox/dissoc! (proto/-ref %))))
         ([p callback]
-         (then p #(mbox/dissoc! (proto/-ref %) callback))))
+         (prom/then p #(mbox/dissoc! (proto/-ref %) callback))))
 
-      (order-priority [p] (then p proto/order-priority))
+      (-order-priority [p] (prom/then p proto/-order-priority))
 
-      (order-key [p] (then p proto/order-key))
+      (-order-key [p] (prom/then p proto/-order-key))
 
-      (order-value [p] (then p proto/order-value))
+      (-order-value [p] (prom/then p proto/-order-value))
 
-      (order-child [p child] (then p #(proto/order-child % child)))
+      (-order-child [p child] (prom/then p #(proto/-order-child % child)))
 
-      (start-at
+      (-start-at
         ([p val]
-         (then p #(proto/start-at % val)))
+         (prom/then p #(proto/-start-at % val)))
         ([p val key]
-         (then p #(proto/start-at % val key))))
+         (prom/then p #(proto/-start-at % val key))))
 
-      (end-at
+      (-end-at
         ([p val]
-         (then p #(proto/end-at % val)))
+         (prom/then p #(proto/-end-at % val)))
         ([p val key]
-         (then p #(proto/end-at % val key))))
+         (prom/then p #(proto/-end-at % val key))))
 
-      (equal-to
+      (-equal-to
         ([p val]
-         (then p #(proto/equal-to % val)))
+         (prom/then p #(proto/-equal-to % val)))
         ([p val key]
-         (then p #(proto/equal-to % val key))))
+         (prom/then p #(proto/-equal-to % val key))))
 
-      ;; Firebase DataSnapshot
-      object
-      (get-in
-        [ref korks]
-        (mbox/get-in ref korks))
 
-      (parent
-        [dat]
-        (proto/-parent dat))
-
-      (-deref
-        ([dat]
-         (-> dat proto/-val mbox/hydrate))
-        ([dat state]
-         (--deref dat state))
-        ([dat state callback]
-         (--deref dat state callback)))
-
-      (deref-list
-        ([dat]
-         (mbox/get-children dat))
-        ([dat state]
-         (--deref-list dat state))
-        ([dat state callback]
-         (--deref-list dat state callback)))
-
-      (-reset!
-        ([dat val]
-         (mbox/reset! (proto/-ref dat) val mbox/undefined))
-        ([dat val callback]
-         (mbox/reset! (proto/-ref dat) val callback)))
-
-      (-swap!
-        ([dat fn args]
-         (swap! (proto/-ref dat) fn args)))
-
-      (-merge!
-        ([dat val]
-         (mbox/merge! (proto/-ref dat) val mbox/undefined))
-        ([dat val callback]
-         (mbox/merge! (proto/-ref dat) val callback)))
-
-      (-conj!
-        ([dat val]
-         (mbox/conj! (proto/-ref dat) val mbox/undefined))
-        ([dat val callback]
-         (mbox/conj! (proto/-ref dat) val callback)))
-
-      (-dissoc!
-        ([dat]
-         (mbox/dissoc! (proto/-ref dat) mbox/undefined))
-        ([dat callback]
-         (mbox/dissoc! (proto/-ref dat) callback)))
-
-      (order-priority [dat] (proto/order-priority (proto/-ref dat)))
-
-      (order-key [dat] (proto/order-key (proto/-ref dat)))
-
-      (order-value [dat] (proto/order-value (proto/-ref dat)))
-
-      (order-child [dat child] (proto/order-child (proto/-ref dat) child))
-
-      (start-at
-        ([dat val]
-         (mbox/start-at (proto/-ref dat) val))
-        ([dat val key]
-         (mbox/start-at (proto/-ref dat) val key)))
-
-      (end-at
-        ([dat val]
-         (mbox/end-at (proto/-ref dat) val))
-        ([dat val key]
-         (mbox/end-at (proto/-ref dat) val key)))
-
-      (equal-to
-        ([dat val]
-         (mbox/equal-to (proto/-ref dat) val))
-        ([dat val key]
-         (mbox/equal-to (proto/-ref dat) val key)))
-
-))
+      ))

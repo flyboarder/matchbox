@@ -28,7 +28,97 @@
     [matchbox.utils :as utils]
     [matchbox.registry :refer [register-listener register-auth-listener disable-auth-listener!]]
     ;[matchbox.promise :as prom]
+    [promesa.core :as prom]
+    [matchbox.protocols :as proto]
     #?(:cljs cljsjs.firebase)))
+
+;; Matchbox Public API Protocol
+(defprotocol Matchbox
+  "Matchbox Public API"
+
+  (get-in
+    [_ korks]
+    "Obtain child Reference or DataSnapshot from base by following korks.")
+
+  (parent
+    [_]
+    "Immediate ancestor of Reference or DataSnapshot, if any.")
+
+  (deref
+    [_]
+    [_ state]
+    [_ state callback]
+    "Deref a Reference, Promise or DataSnapshot.")
+
+  (deref-list
+    [_]
+    [_ state]
+    [_ state callback]
+    "Deref a Reference, Promise or DataSnapshot and return a list of values.")
+
+  (reset-priority!
+    [_ priority]
+    [_ priority callback]
+    "Set priority value on Reference, Promise or DataSnapshot.")
+
+  (reset!
+    [_ val callback]
+    "Reset value on Reference, Promise or DataSnapshot.")
+
+  (swap!
+    [_ fn args callback]
+    "Swap the value on a Reference, Promise or DataSnapshot.")
+
+  (merge!
+    [_ val callback]
+    "Merge a value with a Reference, Promise or DataSnapshot.")
+
+  (conj!
+    [_ val callback]
+    "Conjoin a value to a Reference, Promise or DataSnapshot.")
+
+  (dissoc!
+    [_]
+    [_ callback]
+    "Dissoc a Reference, Promise or DataSnapshot.")
+
+  (order-priority
+    [_]
+    "Resolve Reference, Promise or DataSnapshot and Order by priority.")
+
+  (order-key
+    [_]
+    "Resolve Reference, Promise or DataSnapshot and Order by key.")
+
+  (order-value
+    [_]
+    "Resolve Reference, Promise or DataSnapshot and Order by value.")
+
+  (order-child
+    [_ child]
+    "Resolve Reference, Promise or DataSnapshot and Order by child.")
+
+  (start-at
+    [_ val]
+    [_ val key]
+    "Limit query to begin at 'value' (inclusive).")
+
+  (end-at
+    [_ val]
+    [_ val key]
+    "Limit query to end at 'value' (inclusive).")
+
+  (equal-to
+    [_ val]
+    [_ val key]
+    "Limit query to 'value' (inclusive).")
+
+
+  ;; Listener API
+
+  ;; Auth API
+
+  )
 
 ;; constants
 
@@ -140,6 +230,186 @@
        (walk/postwalk keywords->strings)
        #?(:cljs clj->js)))
 
+(defn- get-children [snapshot]
+;  (mapv value
+  (mapv proto/-val
+        #?(:clj (.getChildren snapshot)
+           ;; perhaps use js array if too much latency here for larger lists
+           :cljs (let [kids (atom [])]
+                   ;; must return falsey else iteration ends
+                   (.forEach snapshot #(do (clojure.core/swap! kids conj %) undefined))
+                   @kids))))
+
+#?(:cljs
+    (defn --deref
+      ([in]
+       (prom/chain in proto/-val hydrate))
+      ([in state]
+       (--deref in state undefined))
+      ([in state callback]
+       (proto/-val in #(comp (cljs.core/reset! state (hydrate (proto/-val %)))
+                              (callback %))))))
+
+#?(:cljs
+    (defn --deref-list
+      ([ref]
+       (proto/-once ref "value" get-children))
+      ([ref state]
+       (--deref ref state get-children))
+      ([ref state callback]
+       (--deref ref state #(callback (get-children %))))))
+
+#?(:cljs
+    (extend-protocol Matchbox
+
+      ;; Firebase Reference
+      js.Firebase
+      (get-in
+        [ref korks]
+        (let [path (utils/korks->path korks)]
+          (if-not (seq path) ref (.child ref path))))
+
+      (deref
+        ([ref]
+         (--deref ref))
+        ([ref state]
+         (--deref ref state))
+        ([ref state callback]
+         (--deref ref state callback)))
+
+      (deref-list
+        ([ref]
+         (--deref-list ref))
+        ([ref state]
+         (--deref-list ref state))
+        ([ref state callback]
+         (--deref-list ref state callback)))
+
+      (reset!
+        ([ref val callback]
+         (proto/-set ref (serialize val) callback)))
+
+      (swap!
+        ([ref f args callback]
+         (let [f' #(-> % hydrate ((fn [x] (apply f x args))) serialize)]
+            (.transaction ref f' callback))))
+
+      (merge!
+        ([ref val callback]
+         (.update ref (serialize val) callback)))
+
+      (conj!
+        ([ref val callback]
+         (let [k (atom nil)]
+           (clojure.core/reset! k (proto/-key (.push ref (serialize val) callback)))
+           @k)))
+
+      (dissoc!
+        ([ref callback]
+         (.remove ref (or callback undefined))))
+
+      (order-priority [ref] (proto/-orderbypriority ref))
+
+      (order-key [ref] (proto/-orderbykey ref))
+
+      (order-value [ref] (proto/-orderbyvalue ref))
+
+      (order-child [ref child] (proto/-orderbychild ref child))
+
+      (start-at
+        ([ref val]
+         (start-at ref val))
+        ([ref val key]
+         (start-at ref val key)))
+
+      (end-at
+        ([ref val]
+         (end-at ref val))
+        ([ref val key]
+         (end-at ref val key)))
+
+      (equal-to
+        ([ref val]
+         (equal-to ref val))
+        ([ref val key]
+         (equal-to ref val key)))
+
+      ;; Firebase DataSnapshot
+      object
+      (get-in
+        [ref korks]
+        (get-in ref korks))
+
+      (deref
+        ([dat]
+         (-> dat -val hydrate))
+        ([dat state]
+         (--deref dat state))
+        ([dat state callback]
+         (--deref dat state callback)))
+
+      (deref-list
+        ([dat]
+         (get-children dat))
+        ([dat state]
+         (--deref-list dat state))
+        ([dat state callback]
+         (--deref-list dat state callback)))
+
+      (reset!
+        ([dat val]
+         (reset! (-ref dat) val undefined))
+        ([dat val callback]
+         (reset! (-ref dat) val callback)))
+
+      (swap!
+        ([dat fn args]
+         (swap! (-ref dat) fn args)))
+
+      (merge!
+        ([dat val]
+         (merge! (-ref dat) val undefined))
+        ([dat val callback]
+         (merge! (-ref dat) val callback)))
+
+      (conj!
+        ([dat val]
+         (conj! (-ref dat) val undefined))
+        ([dat val callback]
+         (conj! (-ref dat) val callback)))
+
+      (dissoc!
+        ([dat]
+         (dissoc! (-ref dat) undefined))
+        ([dat callback]
+         (dissoc! (-ref dat) callback)))
+
+      (order-priority [dat] (-order-priority (-ref dat)))
+
+      (order-key [dat] (-order-key (-ref dat)))
+
+      (order-value [dat] (-order-value (-ref dat)))
+
+      (order-child [dat child] (-order-child (-ref dat) child))
+
+      (start-at
+        ([dat val]
+         (start-at (-ref dat) val))
+        ([dat val key]
+         (start-at (-ref dat) val key)))
+
+      (end-at
+        ([dat val]
+         (end-at (-ref dat) val))
+        ([dat val key]
+         (end-at (-ref dat) val key)))
+
+      (equal-to
+        ([dat val]
+         (equal-to (-ref dat) val))
+        ([dat val key]
+         (equal-to (-ref dat) val key)))))
+
 (defn key
   "Last segment in reference or snapshot path"
   [ref]
@@ -158,11 +428,16 @@
 
 ;; API
 
-(defn get-in
-  "Obtain child reference from base by following korks"
-  [ref korks]
-  (let [path (utils/korks->path korks)]
-    (if-not (seq path) ref (.child ref path))))
+;(defn get-in
+;  "Obtain child reference from base by following korks"
+;  [ref korks]
+;  (let [path (utils/korks->path korks)]
+;    (if-not (seq path) ref (.child ref path))))
+
+#?(:cljs
+    (defn get-in
+      [ref korks]
+      (proto/-get-in ref korks)))
 
 (defn connect
   "Create a reference for firebase"
@@ -188,93 +463,100 @@
   #?(:clj (.addListenerForSingleValueEvent ref (reify-value-listener cb value))
      :cljs (.once ref "value" (comp cb value))))
 
-(defn- get-children [snapshot]
-  (mapv value
-        #?(:clj (.getChildren snapshot)
-           ;; perhaps use js array if too much latency here for larger lists
-           :cljs (let [kids (atom [])]
-                   ;; must return falsey else iteration ends
-                   (.forEach snapshot #(do (clojure.core/swap! kids conj %) undefined))
-                   @kids))))
-
 (defn deref-list [ref cb]
   #?(:clj (.addListenerForSingleValueEvent ref (reify-value-listener cb get-children))
      :cljs (.once ref "value" (comp cb #(get-children %)))))
 
-(defn reset! [ref val & [cb]]
-  #?(:clj
-      (if-not cb
-        (.setValue ref (serialize val))
-        (.setValue ref (serialize val) (wrap-cb cb)))
-     :cljs (.set ref (serialize val) (if cb
-                                       (fn [err]
-                                         (if err
-                                           (throw-fb-error err)
-                                           (cb ref)))
-                                       undefined))))
+;(defn reset! [ref val & [cb]]
+;  #?(:clj
+;      (if-not cb
+;        (.setValue ref (serialize val))
+;        (.setValue ref (serialize val) (wrap-cb cb)))
+;     :cljs (.set ref (serialize val) (if cb
+;                                       (fn [err]
+;                                         (if err
+;                                           (throw-fb-error err)
+;                                           (cb ref)))
+;                                       undefined))))
 
-(defn reset-with-priority! [ref val priority & [cb]]
-  #?(:clj (if-not cb
-            (.setValue ref (serialize val) priority)
-            (.setValue ref (serialize val) priority (wrap-cb cb)))
-     :cljs (.setWithPriority ref (serialize val) priority
-                             (if cb
-                               (fn [err]
-                                 (if err
-                                   (throw-fb-error err)
-                                   (cb ref)))
-                               undefined))))
+(defn reset! [ref val & [cb]]
+  (proto/-reset! ref val (or cb undefined)))
+
+;(defn reset-with-priority! [ref val priority & [cb]]
+;  #?(:clj (if-not cb
+;            (.setValue ref (serialize val) priority)
+;            (.setValue ref (serialize val) priority (wrap-cb cb)))
+;     :cljs (.setWithPriority ref (serialize val) priority
+;                             (if cb
+;                               (fn [err]
+;                                 (if err
+;                                   (throw-fb-error err)
+;                                   (cb ref)))
+;                               undefined))))
+
+;(defn merge! [ref val & [cb]]
+;  #?(:clj
+;      (if-not cb
+;        (.updateChildren ref (serialize val))
+;        (.updateChildren ref (serialize val) (wrap-cb cb)))
+;     :cljs
+;     (.update ref (serialize val) (if cb
+;                                    (fn [err]
+;                                      (if err
+;                                        (throw-fb-error err)
+;                                        (cb ref)))
+;                                    undefined))))
 
 (defn merge! [ref val & [cb]]
-  #?(:clj
-      (if-not cb
-        (.updateChildren ref (serialize val))
-        (.updateChildren ref (serialize val) (wrap-cb cb)))
-     :cljs
-     (.update ref (serialize val) (if cb
-                                    (fn [err]
-                                      (if err
-                                        (throw-fb-error err)
-                                        (cb ref)))
-                                    undefined))))
+  (proto/-merge! ref val (or cb undefined)))
+
+;(defn conj! [ref val & [cb]]
+;  #?(:clj (let [r (.push ref)]
+;            (reset! r val cb)
+;            (key r))
+;     :cljs (let [k (atom nil)]
+;             (clojure.core/reset!
+;               k
+;               (key
+;                 (.push ref (serialize val)
+;                        (if cb
+;                          (fn [err]
+;                            (if err
+;                              (throw-fb-error err)
+;                              (cb (get-in ref @k))))
+;                          undefined))))
+;             @k)))
 
 (defn conj! [ref val & [cb]]
-  #?(:clj (let [r (.push ref)]
-            (reset! r val cb)
-            (key r))
-     :cljs (let [k (atom nil)]
-             (clojure.core/reset!
-               k
-               (key
-                 (.push ref (serialize val)
-                        (if cb
-                          (fn [err]
-                            (if err
-                              (throw-fb-error err)
-                              (cb (get-in ref @k))))
-                          undefined))))
-             @k)))
+  (proto/-conj! ref val (or cb undefined)))
 
-(defn swap!
-  "Update value atomically, with local optimistic writes"
-  [ref f & args]
+;(defn swap!
+;  "Update value atomically, with local optimistic writes"
+;  [ref f & args]
+;  (let [[cb args] (utils/extract :callback args)]
+;    #?(:clj
+;        (.runTransaction ref (build-tx-handler f args cb) true)
+;       :cljs
+;       (let [f' #(-> % hydrate ((fn [x] (apply f x args))) serialize)]
+;         (.transaction ref f' (if cb
+;                                (fn [err commit? ds]
+;                                  (if err
+;                                    (throw-fb-error err)
+;                                    (cb (value ds))))
+;                                undefined))))))
+
+(defn swap! [ref f & args]
   (let [[cb args] (utils/extract :callback args)]
-    #?(:clj
-        (.runTransaction ref (build-tx-handler f args cb) true)
-       :cljs
-       (let [f' #(-> % hydrate ((fn [x] (apply f x args))) serialize)]
-         (.transaction ref f' (if cb
-                                (fn [err commit? ds]
-                                  (if err
-                                    (throw-fb-error err)
-                                    (cb (value ds))))
-                                undefined))))))
+    (proto/-swap! ref f args (or cb undefined))))
+
+;(defn dissoc! [ref & [cb]]
+;  #?(:clj (if-not cb
+;            (.removeValue ref)
+;            (.removeValue ref (wrap-cb cb)))
+;     :cljs (.remove ref (or cb undefined))))
 
 (defn dissoc! [ref & [cb]]
-  #?(:clj (if-not cb
-            (.removeValue ref)
-            (.removeValue ref (wrap-cb cb)))
-     :cljs (.remove ref (or cb undefined))))
+  (proto/-dissoc! ref (or cb undefined)))
 
 (def remove! dissoc!)
 
@@ -546,8 +828,8 @@
 (defn reset-in! [ref korks val & [cb]]
   (reset! (get-in ref korks) val cb))
 
-(defn reset-with-priority-in! [ref korks val priority & [cb]]
-  (reset-with-priority! (get-in ref korks) val priority cb))
+;(defn reset-with-priority-in! [ref korks val priority & [cb]]
+;  (reset-with-priority! (get-in ref korks) val priority cb))
 
 (defn merge-in! [ref korks val & [cb]]
   (merge! (get-in ref korks) val cb))

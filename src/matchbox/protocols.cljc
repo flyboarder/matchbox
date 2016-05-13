@@ -1,124 +1,10 @@
 (ns matchbox.protocols
-  ;(:refer-clojure :exclude [])
+  (:refer-clojure :exclude [-deref -reset! -swap! -conj! -dissoc! -key -val])
   (:require
     [clojure.string :as str]
     [clojure.walk :as walk]
     [promesa.core :as prom]
-    [matchbox.core :as mbox]
     [matchbox.utils :as utils]))
-
-;; Matchbox Public API Protocol
-(defprotocol Matchbox
-  "Matchbox Public API"
-
-  (get-in
-    [_ korks]
-    "Obtain child Reference or DataSnapshot from base by following korks.")
-
-  (parent
-    [_]
-    "Immediate ancestor of Reference or DataSnapshot, if any.")
-
-  (-deref
-    [_]
-    [_ state]
-    [_ state callback]
-    "Deref a Reference, Promise or DataSnapshot.")
-
-  (deref-list
-    [_]
-    [_ state]
-    [_ state callback]
-    "Deref a Reference, Promise or DataSnapshot and return a list of values.")
-
-  (reset-priority!
-    [_ priority]
-    [_ priority callback]
-    "Set priority value on Reference, Promise or DataSnapshot.")
-
-  (-reset!
-    [_ val]
-    [_ val callback]
-    "Reset value on Reference, Promise or DataSnapshot.")
-
-  (-swap!
-    [_ fn args]
-    "Swap the value on a Reference, Promise or DataSnapshot.")
-
-  (-merge!
-    [_ val]
-    [_ val callback]
-    "Merge a value with a Reference, Promise or DataSnapshot.")
-
-  (-conj!
-    [_ val]
-    [_ val callback]
-    "Conjoin a value to a Reference, Promise or DataSnapshot.")
-
-  (-dissoc!
-    [_]
-    [_ callback]
-    "Dissoc a Reference, Promise or DataSnapshot.")
-
-  (order-priority
-    [_]
-    "Resolve Reference, Promise or DataSnapshot and Order by priority.")
-
-  (order-key
-    [_]
-    "Resolve Reference, Promise or DataSnapshot and Order by key.")
-
-  (order-value
-    [_]
-    "Resolve Reference, Promise or DataSnapshot and Order by value.")
-
-  (order-child
-    [_ child]
-    "Resolve Reference, Promise or DataSnapshot and Order by child.")
-
-  (start-at
-    [_ val]
-    [_ val key]
-    "Limit query to begin at 'value' (inclusive).")
-
-  (end-at
-    [_ val]
-    [_ val key]
-    "Limit query to end at 'value' (inclusive).")
-
-  (equal-to
-    [_ val]
-    [_ val key]
-    "Limit query to 'value' (inclusive).")
-
-
-  ;; Listener API
-
-  ;; Auth API
-
-  )
-
-;; Firebase Common Protocol
-(defprotocol Firebase
-  "Common firebase abstractions."
-
-  (-ref
-    [_]
-    "Gets a Firebase reference to the location.")
-
-  (-key
-    [_]
-    "Returns the last token in a Firebase location.")
-
-  (-val
-    [_]
-    [_ callback]
-    "Gets the JavaScript object representation of the Reference or DataSnapshot.")
-
-  (-child
-    [_ path]
-    "Gets a Firebase Reference or DataSnapshot for the location at the specified relative path.")
-)
 
 ;; Firebase Reference Protocol
 (defprotocol FirebaseRef
@@ -256,6 +142,149 @@
     [_]
     "Manually disconnects the Firebase client from the server and disables automatic reconnection."))
 
+#?(:cljs
+    (extend-protocol FirebaseRef
+
+      ;; Firebase Reference
+      js.Firebase
+      (-authcustomtoken
+        ([ref token]
+         (-authcustomtoken ref token matchbox.core/undefined))
+        ([ref token callback]
+         (-authcustomtoken ref token callback nil))
+        ([ref token callback opts]
+         (prom/promise (.authWithCustomToken ref token callback (clj->js opts)))))
+
+      (-authanonymous
+        ([ref callback]
+         (-authanonymous ref callback nil))
+        ([ref callback opts]
+         (prom/promise (.authAnonymously ref callback (clj->js opts)))))
+
+      (-authuserpass
+        ([ref cred]
+         (-authuserpass ref cred matchbox.core/undefined))
+        ([ref cred callback]
+         (-authuserpass ref cred callback nil))
+        ([ref cred callback opts]
+         (prom/promise (.authWithPassword ref cred callback opts))))
+
+      (-authoauthpopup
+        ([ref provider]
+         (-authoauthpopup ref provider matchbox.core/undefined))
+        ([ref provider callback]
+         (-authoauthpopup ref provider callback nil))
+        ([ref provider callback opts]
+         (prom/promise (.authWithOAuthPopup ref provider callback opts))))
+
+      (-authoauthredirect
+        ([ref provider]
+         (-authoauthredirect ref provider matchbox.core/undefined))
+        ([ref provider callback]
+         (-authoauthredirect ref provider callback nil))
+        ([ref provider callback opts]
+         (prom/promise (.authWithOAuthRedirect ref provider callback opts))))
+
+      (-authoauthtoken
+        ([ref provider cred]
+         (-authoauthtoken ref provider cred matchbox.core/undefined))
+        ([ref provider cred callback]
+         (-authoauthtoken ref provider cred callback nil))
+        ([ref provider cred callback opts]
+         (prom/promise (.authWithOAuthToken ref provider cred callback opts))))
+
+      (-getauth [ref] (.getAuth ref))
+
+      (-onauth  [ref callback] (.onAuth ref))
+
+      (-offauth [ref callback] (.offAuth ref))
+
+      (-unauth  [ref] (.unauth ref))
+
+      (-parent  [ref] (.parent ref))
+
+      (-root    [ref] (.root ref))
+
+      (-tostr   [ref] (.toString ref))
+
+      (-set
+        ([ref value]
+         (-set ref value matchbox.core/undefined))
+        ([ref value callback]
+         (prom/promise (.set ref value callback))))
+
+      (-update
+        ([ref value]
+         (-update ref value matchbox.core/undefined))
+        ([ref value callback]
+         (prom/promise (.update ref value callback))))
+
+      (-remove
+        ([ref]
+         (-remove ref matchbox.core/undefined))
+        ([ref callback]
+         (prom/promise (.remove ref callback))))
+
+      (-push
+        ([ref value]
+         (-push ref value matchbox.core/undefined))
+        ([ref value callback]
+         (prom/promise (.push ref value callback))))
+
+      (-setwithpriority
+        ([ref value priority]
+         (-setwithpriority ref value priority matchbox.core/undefined))
+        ([ref value priority callback]
+         (prom/promise (.setWithPriority ref value priority callback))))
+
+      (-setpriority
+        ([ref priority]
+         (-setpriority ref priority matchbox.core/undefined))
+        ([ref priority callback]
+         (prom/promise (.setPriority ref priority callback))))
+
+      (-transaction
+        ([ref updatefn]
+         (-transaction ref updatefn matchbox.core/undefined))
+        ([ref updatefn callback]
+         (-transaction ref updatefn callback false))
+        ([ref updatefn callback applylocally]
+         (prom/promise (.transaction ref updatefn callback applylocally))))
+
+      (-createuser
+        ([ref cred]
+         (-createuser ref cred matchbox.core/undefined))
+        ([ref cred callback]
+         (prom/promise (.createUser ref cred callback))))
+
+      (-changeemail
+        ([ref cred]
+         (-changeemail ref cred matchbox.core/undefined))
+        ([ref cred callback]
+         (prom/promise (.changeEmail ref cred callback))))
+
+      (-changepass
+        ([ref cred]
+         (-changepass ref cred matchbox.core/undefined))
+        ([ref cred callback]
+         (prom/promise (.changePassword ref cred callback))))
+
+      (-removeuser
+        ([ref cred]
+         (-removeuser ref cred matchbox.core/undefined))
+        ([ref cred callback]
+         (prom/promise (.removeUser ref cred callback))))
+
+      (-resetpass
+        ([ref cred]
+         (-resetpass ref cred matchbox.core/undefined))
+        ([ref cred callback]
+         (prom/promise (.resetPassword ref cred callback))))
+
+      (-goonline  [ref] (.goOnline ref))
+
+      (-gooffline [ref] (.goOffline ref))))
+
 ;; Firebase Query Protocol
 (defprotocol FirebaseQuery
   "A firebase reference query abstraction."
@@ -311,6 +340,113 @@
 
   (-limitlast  [_ limit] "Generates a new Query object limited to the last certain number of children."))
 
+#?(:cljs
+    (extend-protocol FirebaseQuery
+
+      ;; Firebase Reference
+      js.Firebase
+      (-on
+        ([ref event callback]
+         (-on ref event callback matchbox.core/undefined))
+        ([ref event callback failure]
+         (.on ref event callback failure)))
+
+      (-off
+        ([ref event]
+         (-off ref event matchbox.core/undefined))
+        ([ref event callback]
+         (.off ref event callback)))
+
+      (-once
+        ([ref event]
+         (-once ref event matchbox.core/undefined))
+        ([ref event callback]
+         (-once ref event callback matchbox.core/undefined))
+        ([ref event callback failure]
+         (prom/promise (.once ref event callback failure))))
+
+      (-orderbychild    [ref key] (.orderByChild ref key))
+
+      (-orderbykey      [ref] (.orderByKey ref))
+
+      (-orderbyvalue    [ref] (.orderByValue ref))
+
+      (-orderbypriority [ref] (.orderByPriority ref))
+
+      (-startat
+        ([ref value]
+         (-startat ref value nil))
+        ([ref value key]
+         (.startAt ref value key)))
+
+      (-endat
+        ([ref value]
+         (-endat ref value nil))
+        ([ref value key]
+         (.endAt ref value key)))
+
+      (-equalto
+        ([ref value]
+         (-equalto ref value nil))
+        ([ref value key]
+         (.equalTo ref value key)))
+
+      (-limitfirst [ref limit] (.limitToFirst ref limit))
+
+      (-limitlast  [ref limit] (.limitToLast ref limit))
+
+      ;; Firebase DataSnapshot
+      object
+      (-on
+        ([dat event callback]
+         (-on dat event callback matchbox.core/undefined))
+        ([dat event callback failure]
+         (prom/chain dat -ref #(-on % event callback failure))))
+
+      (-off
+        ([dat event]
+         (-off dat event matchbox.core/undefined))
+        ([dat event callback]
+         (prom/chain dat -ref #(-off % event callback))))
+
+      (-once
+        ([dat event]
+         (-once dat event matchbox.core/undefined))
+        ([dat event callback]
+         (-once dat event callback matchbox.core/undefined))
+        ([dat event callback failure]
+         (prom/chain dat -ref #(-once % event callback failure))))
+
+      (-orderbychild    [dat key] (prom/chain dat -ref #(-orderbychild % key)))
+
+      (-orderbykey      [dat] (prom/chain dat -ref #(-orderbykey %)))
+
+      (-orderbyvalue    [dat] (prom/chain dat -ref #(-orderbyvalue %)))
+
+      (-orderbypriority [dat] (prom/chain dat -ref #(-orderbypriority %)))
+
+      (-startat
+        ([dat value]
+         (-startat dat value nil))
+        ([dat value key]
+         (prom/chain dat -ref #(-startat % value key))))
+
+      (-endat
+        ([dat value]
+         (-endat dat value nil))
+        ([dat value key]
+         (prom/chain dat -ref #(-endat % value key))))
+
+      (-equalto
+        ([dat value]
+         (-equalto dat value nil))
+        ([dat value key]
+         (prom/chain dat -ref #(-equalto % value key))))
+
+      (-limitfirst [dat limit] (prom/chain dat -ref #(-limitfirst % limit)))
+
+      (-limitlast  [dat limit] (prom/chain dat -ref #(-limitlast % limit)))))
+
 ;; Firebase DataSnapshot Protocol
 (defprotocol FirebaseSnapshot
   "A firebase data snapshot abstraction."
@@ -334,3 +470,80 @@
   (-numchildren
     [_]
     "Gets the number of children for this DataSnapshot."))
+
+#?(:cljs
+    (extend-protocol FirebaseSnapshot
+
+      ;; Firebase Reference
+      js.Firebase
+      (-exists      [ref] (prom/then (-once ref "value") -exists))
+
+      (-foreach     [ref callback] (prom/then (-once ref "value") #(-foreach % callback)))
+
+      (-haschild    [ref path] (prom/then (-once ref "value") #(-haschild % path)))
+
+      (-haschildren [ref] (prom/then (-once ref "value") -haschildren))
+
+      (-numchildren [ref] (prom/then (-once ref "value") -numchildren))
+
+      ;; Firebase DataSnapshot
+      object
+      (-exists      [dat] (.exists dat))
+
+      (-foreach     [dat callback] (.forEach dat callback))
+
+      (-haschild    [dat path] (.hasChild dat path))
+
+      (-haschildren [dat] (.hasChildren dat))
+
+      (-numchildren [dat] (.numChildren dat))))
+
+;; Firebase Common Protocol
+(defprotocol Firebase
+  "Common firebase abstractions."
+
+  (-ref
+    [_]
+    "Gets a Firebase reference to the location.")
+
+  (-key
+    [_]
+    "Returns the last token in a Firebase location.")
+
+  (-val
+    [_]
+    [_ callback]
+    "Gets the JavaScript object representation of the Reference or DataSnapshot.")
+
+  (-child
+    [_ path]
+    "Gets a Firebase Reference or DataSnapshot for the location at the specified relative path.")
+)
+
+#?(:cljs
+    (extend-protocol Firebase
+
+      ;; Firebase Reference
+      js.Firebase
+      (-ref [ref] (.ref ref))
+
+      (-key [ref] (.key ref))
+
+      (-val
+        ([ref] (prom/then (-once ref "value") -val))
+        ([ref callback] (-once ref "value" callback)))
+
+      (-child [ref path] (.child ref path))
+
+      ;; Firebase DataSnapshot
+      object
+      (-ref [dat] (.ref dat))
+
+      (-key [dat] (.key dat))
+
+      (-val
+        ([dat] (.val dat))
+        ([dat callback] (comp callback
+                              (.val dat))))
+
+      (-child [dat path] (.child dat path))))
