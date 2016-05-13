@@ -257,7 +257,7 @@
       mbox/Matchbox
       (get-in
         [p korks]
-        (prom/then p #(get-in % korks)))
+        (then p #(get-in % korks)))
 
       (deref
         ([p state]
@@ -273,51 +273,51 @@
 
       (reset!
         ([p val callback]
-         (prom/then p #(mbox/reset! (proto/-ref %) val callback))))
+         (then p #(mbox/reset! (proto/-ref %) val callback))))
 
-      (swap!
+      (-swap!
         ([p fn args]
-         (prom/then p #(mbox/swap! % fn args))))
+         (then p #(mbox/swap! % fn args))))
 
       (merge!
         ([p val callback]
-         (prom/then p #(mbox/merge! (proto/-ref %) val callback))))
+         (then p #(mbox/merge! (proto/-ref %) val callback))))
 
       (conj!
         ([p val callback]
-         (prom/then p #(mbox/conj! (proto/-ref %) val callback))))
+         (then p #(mbox/conj! (proto/-ref %) val callback))))
 
       (dissoc!
         ([p]
-         (prom/then p #(mbox/dissoc! (proto/-ref %))))
+         (then p #(mbox/dissoc! (proto/-ref %))))
         ([p callback]
-         (prom/then p #(mbox/dissoc! (proto/-ref %) callback))))
+         (then p #(mbox/dissoc! (proto/-ref %) callback))))
 
-      (order-priority [p] (prom/then p proto/-orderbypriority))
+      (order-priority [p] (then p proto/-orderbypriority))
 
-      (order-key [p] (prom/then p proto/-orderbykey))
+      (order-key [p] (then p proto/-orderbykey))
 
-      (order-value [p] (prom/then p proto/-orderbyvalue))
+      (order-value [p] (then p proto/-orderbyvalue))
 
-      (order-child [p child] (prom/then p #(proto/-orderbychild % child)))
+      (order-child [p child] (then p #(proto/-orderbychild % child)))
 
       (start-at
         ([p val]
-         (prom/then p #(proto/-startat % val)))
+         (then p #(proto/-startat % val)))
         ([p val key]
-         (prom/then p #(proto/-startat % val key))))
+         (then p #(proto/-startat % val key))))
 
       (end-at
         ([p val]
-         (prom/then p #(proto/-endat % val)))
+         (then p #(proto/-endat % val)))
         ([p val key]
-         (prom/then p #(proto/-endat % val key))))
+         (then p #(proto/-endat % val key))))
 
       (equal-to
         ([p val]
-         (prom/then p #(proto/-equalto % val)))
+         (then p #(proto/-equalto % val)))
         ([p val key]
-         (prom/then p #(proto/-equalto % val key))))
+         (then p #(proto/-equalto % val key))))
 
 
       ))

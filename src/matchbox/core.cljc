@@ -1,7 +1,7 @@
 (ns matchbox.core
   (:refer-clojure
     :exclude
-    [get-in set! reset! conj! swap! dissoc! deref parents key take take-last])
+    [get-in set! reset! conj! swap! -swap! dissoc! deref parents key take take-last])
   #?(:clj
      (:import
        [com.firebase.client
@@ -64,15 +64,22 @@
     [_ val callback]
     "Reset value on Reference, Promise or DataSnapshot.")
 
-  (swap!
+  (reset-with-priority!
+    [_ val priority]
+    [_ val priority callback]
+    "Set priority value on Reference, Promise or DataSnapshot.")
+
+  (-swap!
     [_ fn args]
     "Swap the value on a Reference, Promise or DataSnapshot.")
 
   (merge!
+    [_ val]
     [_ val callback]
     "Merge a value with a Reference, Promise or DataSnapshot.")
 
   (conj!
+    [_ val]
     [_ val callback]
     "Conjoin a value to a Reference, Promise or DataSnapshot.")
 
@@ -279,17 +286,27 @@
         ([ref val callback]
          (proto/-set ref (serialize val) callback)))
 
-      (swap!
+      (reset-with-priority!
+        ([ref val priority]
+         (reset-with-priority! ref val undefined))
+        ([ref val priority callback]
+         (proto/-setwithpriority ref (serialize val) priority callback)))
+
+      (-swap!
         ([ref f args]
          (let [[callback args] (utils/extract :callback args)]
            (let [f' #(-> % hydrate ((fn [x] (apply f x args))) serialize)]
              (.transaction ref f' callback)))))
 
       (merge!
+        ([ref val]
+         (merge! ref val undefined))
         ([ref val callback]
          (.update ref (serialize val) callback)))
 
       (conj!
+        ([ref val]
+         (conj! ref val undefined))
         ([ref val callback]
          (let [k (atom nil)]
            (clojure.core/reset! k (proto/-key (.push ref (serialize val) callback)))
@@ -349,9 +366,9 @@
         ([dat val callback]
          (reset! (proto/-ref dat) val callback)))
 
-      (swap!
+      (-swap!
         ([dat fn args]
-         (swap! (proto/-ref dat) fn args)))
+         (-swap! (proto/-ref dat) fn args)))
 
       (merge!
         ([dat val callback]
@@ -392,6 +409,9 @@
          (equal-to (proto/-ref dat) val))
         ([dat val key]
          (equal-to (proto/-ref dat) val key)))))
+
+(defn swap! [in fn & args]
+  (-swap! in fn args))
 
 (defn key
   "Last segment in reference or snapshot path"
@@ -798,8 +818,8 @@
 (defn reset-in! [ref korks val & [cb]]
   (reset! (get-in ref korks) val cb))
 
-;(defn reset-with-priority-in! [ref korks val priority & [cb]]
-;  (reset-with-priority! (get-in ref korks) val priority cb))
+(defn reset-with-priority-in! [ref korks val priority & [cb]]
+  (reset-with-priority! (get-in ref korks) val priority cb))
 
 (defn merge-in! [ref korks val & [cb]]
   (merge! (get-in ref korks) val cb))
