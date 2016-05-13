@@ -4,7 +4,58 @@
     [clojure.string :as str]
     [clojure.walk :as walk]
     [promesa.core :as prom]
-    [matchbox.utils :as utils]))
+    [matchbox.utils :as utils]
+    #?(:cljs cljsjs.firebase)))
+
+;; Firebase Common Protocol
+(defprotocol Firebase
+  "Common firebase abstractions."
+
+  (-ref
+    [_]
+    "Gets a Firebase reference to the location.")
+
+  (-key
+    [_]
+    "Returns the last token in a Firebase location.")
+
+  (-val
+    [_]
+    [_ callback]
+    "Gets the JavaScript object representation of the Reference or DataSnapshot.")
+
+  (-child
+    [_ path]
+    "Gets a Firebase Reference or DataSnapshot for the location at the specified relative path.")
+)
+
+#?(:cljs
+    (extend-protocol Firebase
+
+      ;; Firebase Reference
+      js.Firebase
+      (-ref [ref] (.ref ref))
+
+      (-key [ref] (.key ref))
+
+      (-val
+        ([ref] (prom/then (.once ref "value") #(.val %)))
+        ([ref callback] (.once ref "value" callback)))
+
+      (-child [ref path] (.child ref path))
+
+      ;; Firebase DataSnapshot
+      object
+      (-ref [dat] (.ref dat))
+
+      (-key [dat] (.key dat))
+
+      (-val
+        ([dat] (.val dat))
+        ([dat callback] (comp callback
+                              (.val dat))))
+
+      (-child [dat path] (.child dat path))))
 
 ;; Firebase Reference Protocol
 (defprotocol FirebaseRef
@@ -142,6 +193,8 @@
     [_]
     "Manually disconnects the Firebase client from the server and disables automatic reconnection."))
 
+(def undefined)
+
 #?(:cljs
     (extend-protocol FirebaseRef
 
@@ -149,7 +202,7 @@
       js.Firebase
       (-authcustomtoken
         ([ref token]
-         (-authcustomtoken ref token matchbox.core/undefined))
+         (-authcustomtoken ref token undefined))
         ([ref token callback]
          (-authcustomtoken ref token callback nil))
         ([ref token callback opts]
@@ -163,7 +216,7 @@
 
       (-authuserpass
         ([ref cred]
-         (-authuserpass ref cred matchbox.core/undefined))
+         (-authuserpass ref cred undefined))
         ([ref cred callback]
          (-authuserpass ref cred callback nil))
         ([ref cred callback opts]
@@ -171,7 +224,7 @@
 
       (-authoauthpopup
         ([ref provider]
-         (-authoauthpopup ref provider matchbox.core/undefined))
+         (-authoauthpopup ref provider undefined))
         ([ref provider callback]
          (-authoauthpopup ref provider callback nil))
         ([ref provider callback opts]
@@ -179,7 +232,7 @@
 
       (-authoauthredirect
         ([ref provider]
-         (-authoauthredirect ref provider matchbox.core/undefined))
+         (-authoauthredirect ref provider undefined))
         ([ref provider callback]
          (-authoauthredirect ref provider callback nil))
         ([ref provider callback opts]
@@ -187,7 +240,7 @@
 
       (-authoauthtoken
         ([ref provider cred]
-         (-authoauthtoken ref provider cred matchbox.core/undefined))
+         (-authoauthtoken ref provider cred undefined))
         ([ref provider cred callback]
          (-authoauthtoken ref provider cred callback nil))
         ([ref provider cred callback opts]
@@ -209,43 +262,43 @@
 
       (-set
         ([ref value]
-         (-set ref value matchbox.core/undefined))
+         (-set ref value undefined))
         ([ref value callback]
          (prom/promise (.set ref value callback))))
 
       (-update
         ([ref value]
-         (-update ref value matchbox.core/undefined))
+         (-update ref value undefined))
         ([ref value callback]
          (prom/promise (.update ref value callback))))
 
       (-remove
         ([ref]
-         (-remove ref matchbox.core/undefined))
+         (-remove ref undefined))
         ([ref callback]
          (prom/promise (.remove ref callback))))
 
       (-push
         ([ref value]
-         (-push ref value matchbox.core/undefined))
+         (-push ref value undefined))
         ([ref value callback]
          (prom/promise (.push ref value callback))))
 
       (-setwithpriority
         ([ref value priority]
-         (-setwithpriority ref value priority matchbox.core/undefined))
+         (-setwithpriority ref value priority undefined))
         ([ref value priority callback]
          (prom/promise (.setWithPriority ref value priority callback))))
 
       (-setpriority
         ([ref priority]
-         (-setpriority ref priority matchbox.core/undefined))
+         (-setpriority ref priority undefined))
         ([ref priority callback]
          (prom/promise (.setPriority ref priority callback))))
 
       (-transaction
         ([ref updatefn]
-         (-transaction ref updatefn matchbox.core/undefined))
+         (-transaction ref updatefn undefined))
         ([ref updatefn callback]
          (-transaction ref updatefn callback false))
         ([ref updatefn callback applylocally]
@@ -253,31 +306,31 @@
 
       (-createuser
         ([ref cred]
-         (-createuser ref cred matchbox.core/undefined))
+         (-createuser ref cred undefined))
         ([ref cred callback]
          (prom/promise (.createUser ref cred callback))))
 
       (-changeemail
         ([ref cred]
-         (-changeemail ref cred matchbox.core/undefined))
+         (-changeemail ref cred undefined))
         ([ref cred callback]
          (prom/promise (.changeEmail ref cred callback))))
 
       (-changepass
         ([ref cred]
-         (-changepass ref cred matchbox.core/undefined))
+         (-changepass ref cred undefined))
         ([ref cred callback]
          (prom/promise (.changePassword ref cred callback))))
 
       (-removeuser
         ([ref cred]
-         (-removeuser ref cred matchbox.core/undefined))
+         (-removeuser ref cred undefined))
         ([ref cred callback]
          (prom/promise (.removeUser ref cred callback))))
 
       (-resetpass
         ([ref cred]
-         (-resetpass ref cred matchbox.core/undefined))
+         (-resetpass ref cred undefined))
         ([ref cred callback]
          (prom/promise (.resetPassword ref cred callback))))
 
@@ -347,21 +400,21 @@
       js.Firebase
       (-on
         ([ref event callback]
-         (-on ref event callback matchbox.core/undefined))
+         (-on ref event callback undefined))
         ([ref event callback failure]
          (.on ref event callback failure)))
 
       (-off
         ([ref event]
-         (-off ref event matchbox.core/undefined))
+         (-off ref event undefined))
         ([ref event callback]
          (.off ref event callback)))
 
       (-once
         ([ref event]
-         (-once ref event matchbox.core/undefined))
+         (-once ref event undefined))
         ([ref event callback]
-         (-once ref event callback matchbox.core/undefined))
+         (-once ref event callback undefined))
         ([ref event callback failure]
          (prom/promise (.once ref event callback failure))))
 
@@ -399,21 +452,21 @@
       object
       (-on
         ([dat event callback]
-         (-on dat event callback matchbox.core/undefined))
+         (-on dat event callback undefined))
         ([dat event callback failure]
          (prom/chain dat -ref #(-on % event callback failure))))
 
       (-off
         ([dat event]
-         (-off dat event matchbox.core/undefined))
+         (-off dat event undefined))
         ([dat event callback]
          (prom/chain dat -ref #(-off % event callback))))
 
       (-once
         ([dat event]
-         (-once dat event matchbox.core/undefined))
+         (-once dat event undefined))
         ([dat event callback]
-         (-once dat event callback matchbox.core/undefined))
+         (-once dat event callback undefined))
         ([dat event callback failure]
          (prom/chain dat -ref #(-once % event callback failure))))
 
@@ -497,53 +550,3 @@
       (-haschildren [dat] (.hasChildren dat))
 
       (-numchildren [dat] (.numChildren dat))))
-
-;; Firebase Common Protocol
-(defprotocol Firebase
-  "Common firebase abstractions."
-
-  (-ref
-    [_]
-    "Gets a Firebase reference to the location.")
-
-  (-key
-    [_]
-    "Returns the last token in a Firebase location.")
-
-  (-val
-    [_]
-    [_ callback]
-    "Gets the JavaScript object representation of the Reference or DataSnapshot.")
-
-  (-child
-    [_ path]
-    "Gets a Firebase Reference or DataSnapshot for the location at the specified relative path.")
-)
-
-#?(:cljs
-    (extend-protocol Firebase
-
-      ;; Firebase Reference
-      js.Firebase
-      (-ref [ref] (.ref ref))
-
-      (-key [ref] (.key ref))
-
-      (-val
-        ([ref] (prom/then (-once ref "value") -val))
-        ([ref callback] (-once ref "value" callback)))
-
-      (-child [ref path] (.child ref path))
-
-      ;; Firebase DataSnapshot
-      object
-      (-ref [dat] (.ref dat))
-
-      (-key [dat] (.key dat))
-
-      (-val
-        ([dat] (.val dat))
-        ([dat callback] (comp callback
-                              (.val dat))))
-
-      (-child [dat path] (.child dat path))))

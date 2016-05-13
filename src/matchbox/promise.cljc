@@ -254,80 +254,70 @@
       (-numchildren [p] (then p proto/-numchildren))
 
       ;; Firebase Promise
-      proto/Matchbox
-      (-get-in
+      mbox/Matchbox
+      (get-in
         [p korks]
         (prom/then p #(get-in % korks)))
 
-      (-deref
-        ([p]
-         (--deref p))
+      (deref
         ([p state]
-         (--deref p state))
+         (mbox/--deref p state))
         ([p state callback]
-         (--deref p state callback)))
+         (mbox/--deref p state callback)))
 
-      (-deref-list
-        ([p]
-         (--deref-list p))
+      (deref-list
         ([p state]
-         (--deref-list p state))
+         (mbox/--deref-list p state))
         ([p state callback]
-         (--deref-list p state callback)))
+         (mbox/--deref-list p state callback)))
 
-      (-reset!
-        ([p val]
-         (prom/then p #(mbox/reset! (proto/-ref %) val undefined)))
+      (reset!
         ([p val callback]
          (prom/then p #(mbox/reset! (proto/-ref %) val callback))))
 
-      (-swap!
+      (swap!
         ([p fn args]
-         (prom/then p #(swap! % fn args))))
+         (prom/then p #(mbox/swap! % fn args))))
 
-      (-merge!
-        ([p val]
-         (prom/then p #(mbox/merge! (proto/-ref %) val undefined)))
+      (merge!
         ([p val callback]
          (prom/then p #(mbox/merge! (proto/-ref %) val callback))))
 
-      (-conj!
-        ([p val]
-         (prom/then p #(mbox/conj! (proto/-ref %) val undefined)))
+      (conj!
         ([p val callback]
          (prom/then p #(mbox/conj! (proto/-ref %) val callback))))
 
-      (-dissoc!
+      (dissoc!
         ([p]
          (prom/then p #(mbox/dissoc! (proto/-ref %))))
         ([p callback]
          (prom/then p #(mbox/dissoc! (proto/-ref %) callback))))
 
-      (-order-priority [p] (prom/then p proto/-order-priority))
+      (order-priority [p] (prom/then p proto/-orderbypriority))
 
-      (-order-key [p] (prom/then p proto/-order-key))
+      (order-key [p] (prom/then p proto/-orderbykey))
 
-      (-order-value [p] (prom/then p proto/-order-value))
+      (order-value [p] (prom/then p proto/-orderbyvalue))
 
-      (-order-child [p child] (prom/then p #(proto/-order-child % child)))
+      (order-child [p child] (prom/then p #(proto/-orderbychild % child)))
 
-      (-start-at
+      (start-at
         ([p val]
-         (prom/then p #(proto/-start-at % val)))
+         (prom/then p #(proto/-startat % val)))
         ([p val key]
-         (prom/then p #(proto/-start-at % val key))))
+         (prom/then p #(proto/-startat % val key))))
 
-      (-end-at
+      (end-at
         ([p val]
-         (prom/then p #(proto/-end-at % val)))
+         (prom/then p #(proto/-endat % val)))
         ([p val key]
-         (prom/then p #(proto/-end-at % val key))))
+         (prom/then p #(proto/-endat % val key))))
 
-      (-equal-to
+      (equal-to
         ([p val]
-         (prom/then p #(proto/-equal-to % val)))
+         (prom/then p #(proto/-equalto % val)))
         ([p val key]
-         (prom/then p #(proto/-equal-to % val key))))
+         (prom/then p #(proto/-equalto % val key))))
 
 
       ))

@@ -45,7 +45,6 @@
     "Immediate ancestor of Reference or DataSnapshot, if any.")
 
   (deref
-    [_]
     [_ state]
     [_ state callback]
     "Deref a Reference, Promise or DataSnapshot.")
@@ -66,7 +65,7 @@
     "Reset value on Reference, Promise or DataSnapshot.")
 
   (swap!
-    [_ fn args callback]
+    [_ fn args]
     "Swap the value on a Reference, Promise or DataSnapshot.")
 
   (merge!
@@ -242,18 +241,13 @@
 
 #?(:cljs
     (defn --deref
-      ([in]
-       (prom/chain in proto/-val hydrate))
       ([in state]
        (--deref in state undefined))
       ([in state callback]
-       (proto/-val in #(comp (cljs.core/reset! state (hydrate (proto/-val %)))
-                              (callback %))))))
+       (proto/-val in #(comp callback (cljs.core/reset! state (hydrate (proto/-val %))))))))
 
 #?(:cljs
     (defn --deref-list
-      ([ref]
-       (proto/-once ref "value" get-children))
       ([ref state]
        (--deref ref state get-children))
       ([ref state callback]
@@ -270,16 +264,12 @@
           (if-not (seq path) ref (.child ref path))))
 
       (deref
-        ([ref]
-         (--deref ref))
         ([ref state]
          (--deref ref state))
         ([ref state callback]
          (--deref ref state callback)))
 
       (deref-list
-        ([ref]
-         (--deref-list ref))
         ([ref state]
          (--deref-list ref state))
         ([ref state callback]
@@ -290,9 +280,10 @@
          (proto/-set ref (serialize val) callback)))
 
       (swap!
-        ([ref f args callback]
-         (let [f' #(-> % hydrate ((fn [x] (apply f x args))) serialize)]
-            (.transaction ref f' callback))))
+        ([ref f args]
+         (let [[callback args] (utils/extract :callback args)]
+           (let [f' #(-> % hydrate ((fn [x] (apply f x args))) serialize)]
+             (.transaction ref f' callback)))))
 
       (merge!
         ([ref val callback]
@@ -341,8 +332,6 @@
         (get-in ref korks))
 
       (deref
-        ([dat]
-         (-> dat -val hydrate))
         ([dat state]
          (--deref dat state))
         ([dat state callback]
@@ -357,58 +346,52 @@
          (--deref-list dat state callback)))
 
       (reset!
-        ([dat val]
-         (reset! (-ref dat) val undefined))
         ([dat val callback]
-         (reset! (-ref dat) val callback)))
+         (reset! (proto/-ref dat) val callback)))
 
       (swap!
         ([dat fn args]
-         (swap! (-ref dat) fn args)))
+         (swap! (proto/-ref dat) fn args)))
 
       (merge!
-        ([dat val]
-         (merge! (-ref dat) val undefined))
         ([dat val callback]
-         (merge! (-ref dat) val callback)))
+         (merge! (proto/-ref dat) val callback)))
 
       (conj!
-        ([dat val]
-         (conj! (-ref dat) val undefined))
         ([dat val callback]
-         (conj! (-ref dat) val callback)))
+         (conj! (proto/-ref dat) val callback)))
 
       (dissoc!
         ([dat]
-         (dissoc! (-ref dat) undefined))
+         (dissoc! (proto/-ref dat) undefined))
         ([dat callback]
-         (dissoc! (-ref dat) callback)))
+         (dissoc! (proto/-ref dat) callback)))
 
-      (order-priority [dat] (-order-priority (-ref dat)))
+      (order-priority [dat] (order-priority (proto/-ref dat)))
 
-      (order-key [dat] (-order-key (-ref dat)))
+      (order-key [dat] (order-key (proto/-ref dat)))
 
-      (order-value [dat] (-order-value (-ref dat)))
+      (order-value [dat] (order-value (proto/-ref dat)))
 
-      (order-child [dat child] (-order-child (-ref dat) child))
+      (order-child [dat child] (order-child (proto/-ref dat) child))
 
       (start-at
         ([dat val]
-         (start-at (-ref dat) val))
+         (start-at (proto/-ref dat) val))
         ([dat val key]
-         (start-at (-ref dat) val key)))
+         (start-at (proto/-ref dat) val key)))
 
       (end-at
         ([dat val]
-         (end-at (-ref dat) val))
+         (end-at (proto/-ref dat) val))
         ([dat val key]
-         (end-at (-ref dat) val key)))
+         (end-at (proto/-ref dat) val key)))
 
       (equal-to
         ([dat val]
-         (equal-to (-ref dat) val))
+         (equal-to (proto/-ref dat) val))
         ([dat val key]
-         (equal-to (-ref dat) val key)))))
+         (equal-to (proto/-ref dat) val key)))))
 
 (defn key
   "Last segment in reference or snapshot path"
@@ -434,10 +417,10 @@
 ;  (let [path (utils/korks->path korks)]
 ;    (if-not (seq path) ref (.child ref path))))
 
-#?(:cljs
-    (defn get-in
-      [ref korks]
-      (proto/-get-in ref korks)))
+;#?(:cljs
+;    (defn get-in
+;      [ref korks]
+;      (proto/-get-in ref korks)))
 
 (defn connect
   "Create a reference for firebase"
@@ -447,25 +430,25 @@
   ([url korks]
    (get-in (connect url) korks)))
 
-(defn parent
-  "Immediate ancestor of reference, if any"
-  [ref]
-  (and ref
-       #?(:clj (.getParent ref)
-          :cljs (.parent ref))))
+;(defn parent
+;  "Immediate ancestor of reference, if any"
+;  [ref]
+;  (and ref
+;       #?(:clj (.getParent ref)
+;          :cljs (.parent ref))))
 
 (defn parents
   "Probably don't need this. Or maybe we want more zipper nav (siblings, in-order, etc)"
   [ref]
   (take-while identity (iterate parent (parent ref))))
 
-(defn deref [ref cb]
-  #?(:clj (.addListenerForSingleValueEvent ref (reify-value-listener cb value))
-     :cljs (.once ref "value" (comp cb value))))
+;(defn deref [ref cb]
+;  #?(:clj (.addListenerForSingleValueEvent ref (reify-value-listener cb value))
+;     :cljs (.once ref "value" (comp cb value))))
 
-(defn deref-list [ref cb]
-  #?(:clj (.addListenerForSingleValueEvent ref (reify-value-listener cb get-children))
-     :cljs (.once ref "value" (comp cb #(get-children %)))))
+;(defn deref-list [ref cb]
+;  #?(:clj (.addListenerForSingleValueEvent ref (reify-value-listener cb get-children))
+;     :cljs (.once ref "value" (comp cb #(get-children %)))))
 
 ;(defn reset! [ref val & [cb]]
 ;  #?(:clj
@@ -479,8 +462,8 @@
 ;                                           (cb ref)))
 ;                                       undefined))))
 
-(defn reset! [ref val & [cb]]
-  (proto/-reset! ref val (or cb undefined)))
+;(defn reset! [ref val & [cb]]
+;  (proto/-set! ref val (or cb undefined)))
 
 ;(defn reset-with-priority! [ref val priority & [cb]]
 ;  #?(:clj (if-not cb
@@ -507,9 +490,6 @@
 ;                                        (cb ref)))
 ;                                    undefined))))
 
-(defn merge! [ref val & [cb]]
-  (proto/-merge! ref val (or cb undefined)))
-
 ;(defn conj! [ref val & [cb]]
 ;  #?(:clj (let [r (.push ref)]
 ;            (reset! r val cb)
@@ -527,9 +507,6 @@
 ;                          undefined))))
 ;             @k)))
 
-(defn conj! [ref val & [cb]]
-  (proto/-conj! ref val (or cb undefined)))
-
 ;(defn swap!
 ;  "Update value atomically, with local optimistic writes"
 ;  [ref f & args]
@@ -545,18 +522,11 @@
 ;                                    (cb (value ds))))
 ;                                undefined))))))
 
-(defn swap! [ref f & args]
-  (let [[cb args] (utils/extract :callback args)]
-    (proto/-swap! ref f args (or cb undefined))))
-
 ;(defn dissoc! [ref & [cb]]
 ;  #?(:clj (if-not cb
 ;            (.removeValue ref)
 ;            (.removeValue ref (wrap-cb cb)))
 ;     :cljs (.remove ref (or cb undefined))))
-
-(defn dissoc! [ref & [cb]]
-  (proto/-dissoc! ref (or cb undefined)))
 
 (def remove! dissoc!)
 
@@ -622,41 +592,41 @@
 
 ;;
 
-(defn start-at
-  "Limit query to start at `value` (inclusive). By default `value` is compared against
-   priorities, but reacts to the `order-by-*` scope. This also affects what types
-   `value can take on.
+;(defn start-at
+;  "Limit query to start at `value` (inclusive). By default `value` is compared against
+;   priorities, but reacts to the `order-by-*` scope. This also affects what types
+;   `value can take on.
+;
+;   `key` is the child key to start at, and is supported only when ordering by priority."
+;  [ref value & [key]]
+;  (let [value (if (number? value) (double value) value)]
+;    (if key
+;      (.startAt ref value (name key))
+;      (.startAt ref value))))
 
-   `key` is the child key to start at, and is supported only when ordering by priority."
-  [ref value & [key]]
-  (let [value (if (number? value) (double value) value)]
-    (if key
-      (.startAt ref value (name key))
-      (.startAt ref value))))
+;(defn end-at
+;  "Limit query to end at `value` (inclusive). By default `value` is compared against
+;   priorities, but reacts to the `order-by-*` scope. This also affects what types
+;   `value can take on.
+;
+;   `key` is the child key to end at, and is supported only when ordering by priority."
+;  [ref value & [key]]
+;  (let [value (if (number? value) (double value) value)]
+;    (if key
+;      (.endAt ref value (name key))
+;      (.endAt ref value))))
 
-(defn end-at
-  "Limit query to end at `value` (inclusive). By default `value` is compared against
-   priorities, but reacts to the `order-by-*` scope. This also affects what types
-   `value can take on.
-
-   `key` is the child key to end at, and is supported only when ordering by priority."
-  [ref value & [key]]
-  (let [value (if (number? value) (double value) value)]
-    (if key
-      (.endAt ref value (name key))
-      (.endAt ref value))))
-
-(defn equal-to
-  "Limit query to `value` (inclusive). By default `value` is compared against
-   priorities, but reacts to the `order-by-*` scope. This also affects what types
-   `value can take on.
-
-  `key` is the child key to compare on, and is supported only when ordering by priority."
-  [ref value & [key]]
-  (let [value (if (number? value) (double value) value)]
-    (if key
-      (.equalTo ref value (name key))
-      (.equalTo ref value))))
+;(defn equal-to
+;  "Limit query to `value` (inclusive). By default `value` is compared against
+;   priorities, but reacts to the `order-by-*` scope. This also affects what types
+;   `value can take on.
+;
+;  `key` is the child key to compare on, and is supported only when ordering by priority."
+;  [ref value & [key]]
+;  (let [value (if (number? value) (double value) value)]
+;    (if key
+;      (.equalTo ref value (name key))
+;      (.equalTo ref value))))
 
 (defn take
   "Limit scope to the first `limit` items"
