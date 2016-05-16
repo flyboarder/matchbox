@@ -40,18 +40,14 @@
     [_ korks]
     "Obtain child Reference or DataSnapshot from base by following korks.")
 
-  (parent
-    [_]
-    "Immediate ancestor of Reference or DataSnapshot, if any.")
-
   (deref
-    [_ state]
+    [_ callback]
     [_ state callback]
     "Deref a Reference, Promise or DataSnapshot.")
 
   (deref-list
     [_]
-    [_ state]
+    [_ callback]
     [_ state callback]
     "Deref a Reference, Promise or DataSnapshot and return a list of values.")
 
@@ -61,6 +57,7 @@
     "Set priority value on Reference, Promise or DataSnapshot.")
 
   (reset!
+    [_ val]
     [_ val callback]
     "Reset value on Reference, Promise or DataSnapshot.")
 
@@ -237,7 +234,6 @@
        #?(:cljs clj->js)))
 
 (defn- get-children [snapshot]
-;  (mapv value
   (mapv proto/-val
         #?(:clj (.getChildren snapshot)
            ;; perhaps use js array if too much latency here for larger lists
@@ -246,43 +242,75 @@
                    (.forEach snapshot #(do (clojure.core/swap! kids conj %) undefined))
                    @kids))))
 
-#?(:cljs
-    (defn --deref
-      ([in state]
-       (--deref in state undefined))
-      ([in state callback]
-       (proto/-val in #(comp callback (cljs.core/reset! state (hydrate (proto/-val %))))))))
+(defn --deref
+  ([in callback]
+   (--deref in (atom nil) callback))
+  ([in state callback]
+   #?(:clj  (proto/-val in (reify-value-listener callback #(hydrate (proto/-val %))))
+      :cljs (proto/-val in #(comp callback (cljs.core/reset! state (hydrate (proto/-val %))))))))
 
-#?(:cljs
-    (defn --deref-list
-      ([ref state]
-       (--deref ref state get-children))
-      ([ref state callback]
-       (--deref ref state #(callback (get-children %))))))
+(defn --deref-list
+  ([ref callback]
+   (--deref ref (atom nil) callback))
+  ([ref state callback]
+   (--deref ref state #(comp callback get-children))))
 
-#?(:cljs
+(defn -get-in
+  [ref korks]
+  (let [path (utils/korks->path korks)]
+    (if-not (seq path) ref (proto/-child ref path))))
+
+#?(:clj
+    (extend-protocol Matchbox
+
+      ;; Firebase Reference
+      com.firebase.client.Firebase
+      (get-in
+        [ref korks]
+        (-get-in ref korks))
+
+      (deref
+        ([ref callback]
+         (--deref ref callback))
+        ([ref state callback]
+         (--deref ref state callback)))
+
+      (deref-list
+        ([ref callback]
+         (--deref-list ref callback))
+        ([ref state callback]
+         (--deref-list ref state callback)))
+
+      (reset!
+        ([ref val]
+         (reset! ref val identity))
+        ([ref val callback]
+         (.setValue ref (serialize val) (wrap-cb callback)))))
+
+   :cljs
     (extend-protocol Matchbox
 
       ;; Firebase Reference
       js.Firebase
       (get-in
         [ref korks]
-        (let [path (utils/korks->path korks)]
-          (if-not (seq path) ref (.child ref path))))
+        (-get-in ref korks))
 
       (deref
-        ([ref state]
-         (--deref ref state))
+        ([ref callback]
+         (--deref ref callback))
         ([ref state callback]
          (--deref ref state callback)))
 
       (deref-list
-        ([ref state]
-         (--deref-list ref state))
+        ([ref callback]
+         (--deref-list ref callback))
         ([ref state callback]
          (--deref-list ref state callback)))
 
       (reset!
+        ([ref val]
+         (reset! ref val identity))
         ([ref val callback]
          (proto/-set ref (serialize val) callback)))
 
@@ -349,16 +377,16 @@
         (get-in ref korks))
 
       (deref
-        ([dat state]
-         (--deref dat state))
+        ([dat callback]
+         (--deref dat callback))
         ([dat state callback]
          (--deref dat state callback)))
 
       (deref-list
         ([dat]
          (get-children dat))
-        ([dat state]
-         (--deref-list dat state))
+        ([dat callback]
+         (--deref-list dat callback))
         ([dat state callback]
          (--deref-list dat state callback)))
 
@@ -415,32 +443,18 @@
 
 (defn key
   "Last segment in reference or snapshot path"
-  [ref]
-  #?(:clj (.getKey ref)
-     :cljs (.key ref)))
+  [in]
+  (proto/-key in))
 
 (defn value
   "Data stored within snapshot"
-  [snapshot]
-  (hydrate
-    #?(:clj (.getValue snapshot)
-       :cljs (.val snapshot))))
+  [in]
+  (hydrate (proto/-val in)))
 
 (defn- wrap-snapshot [snapshot]
   [(key snapshot) (value snapshot)])
 
 ;; API
-
-;(defn get-in
-;  "Obtain child reference from base by following korks"
-;  [ref korks]
-;  (let [path (utils/korks->path korks)]
-;    (if-not (seq path) ref (.child ref path))))
-
-;#?(:cljs
-;    (defn get-in
-;      [ref korks]
-;      (proto/-get-in ref korks)))
 
 (defn connect
   "Create a reference for firebase"
@@ -450,12 +464,10 @@
   ([url korks]
    (get-in (connect url) korks)))
 
-;(defn parent
-;  "Immediate ancestor of reference, if any"
-;  [ref]
-;  (and ref
-;       #?(:clj (.getParent ref)
-;          :cljs (.parent ref))))
+(defn parent
+  "Immediate ancestor of reference, if any"
+  [ref]
+  (proto/-parent ref))
 
 (defn parents
   "Probably don't need this. Or maybe we want more zipper nav (siblings, in-order, etc)"
@@ -481,9 +493,6 @@
 ;                                           (throw-fb-error err)
 ;                                           (cb ref)))
 ;                                       undefined))))
-
-;(defn reset! [ref val & [cb]]
-;  (proto/-set! ref val (or cb undefined)))
 
 ;(defn reset-with-priority! [ref val priority & [cb]]
 ;  #?(:clj (if-not cb

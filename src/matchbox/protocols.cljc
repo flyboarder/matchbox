@@ -7,6 +7,8 @@
     [matchbox.utils :as utils]
     #?(:cljs cljsjs.firebase)))
 
+(def undefined)
+
 ;; Firebase Common Protocol
 (defprotocol Firebase
   "Common firebase abstractions."
@@ -29,7 +31,38 @@
     "Gets a Firebase Reference or DataSnapshot for the location at the specified relative path.")
 )
 
-#?(:cljs
+#?(:clj
+    (extend-protocol Firebase
+
+      ;; Firebase Reference
+      com.firebase.client.Firebase
+      (-ref [ref] (.getRef ref))
+
+      (-key [ref] (.getKey ref))
+
+      (-val
+        ([ref]
+         (-val ref identity))
+        ([ref callback]
+         (.addListenerForSingleValueEvent ref callback)))
+
+      (-child [ref path] (.child ref path))
+
+      ;; Firebase DataSnapshot
+      com.firebase.client.DataSnapshot
+      (-ref [dat] (.getRef dat))
+
+      (-key [dat] (.getKey dat))
+
+      (-val
+        ([dat]
+         (-val ref identity))
+        ([dat callback]
+         (comp callback (.getValue dat))))
+
+      (-child [dat path] (.child dat path)))
+
+   :cljs
     (extend-protocol Firebase
 
       ;; Firebase Reference
@@ -52,8 +85,7 @@
 
       (-val
         ([dat] (.val dat))
-        ([dat callback] (comp callback
-                              (.val dat))))
+        ([dat callback] (comp callback (.val dat))))
 
       (-child [dat path] (.child dat path))))
 
@@ -193,9 +225,14 @@
     [_]
     "Manually disconnects the Firebase client from the server and disables automatic reconnection."))
 
-(def undefined)
+#?(:clj
+    (extend-protocol FirebaseRef
 
-#?(:cljs
+      ;; Firebase Reference
+      com.firebase.client.Firebase
+      (-parent [ref] (.getParent ref)))
+
+   :cljs
     (extend-protocol FirebaseRef
 
       ;; Firebase Reference
